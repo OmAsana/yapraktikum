@@ -50,25 +50,28 @@ func (a *Agent) Server(ctx context.Context) {
 func (a *Agent) report() {
 	for _, gauge := range a.registry.Gauges {
 		url := fmt.Sprintf("%s/update/gauge/%s/%f", a.cfg.PushEndpoint, gauge.Name, gauge.Value)
-		_, err := a.httpClient.Post(url, "text/plain", nil)
+		ret, err := a.httpClient.Post(url, "text/plain", nil)
 		if err != nil {
 			fmt.Println(err)
 		}
+		ret.Body.Close()
 	}
 
 	for _, counter := range a.registry.Counters {
 		url := fmt.Sprintf("%s/update/counter/%s/%d", a.cfg.PushEndpoint, counter.Name, counter.Value)
-		_, err := a.httpClient.Post(url, "text/plain", nil)
+		ret, err := a.httpClient.Post(url, "text/plain", nil)
 		if err != nil {
 			fmt.Println(err)
 		}
+		ret.Body.Close()
 
 	}
 
 	url := fmt.Sprintf("%s/update/counter/%s/%d", a.cfg.PushEndpoint, a.registry.PollCounter.Name, a.registry.PollCounter.Value)
-	_, err := a.httpClient.Post(url, "text/plain", nil)
+	ret, err := a.httpClient.Post(url, "text/plain", nil)
 	if err != nil {
 		fmt.Println(err)
 	}
+	ret.Body.Close()
 
 }
