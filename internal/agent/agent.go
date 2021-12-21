@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	"praktikum/internal/metrics"
+	"github.com/OmAsana/yapraktikum/internal/metrics"
 )
 
 type Config struct {

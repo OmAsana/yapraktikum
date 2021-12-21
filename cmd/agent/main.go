@@ -5,7 +5,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"praktikum/internal/agent"
+	"github.com/OmAsana/yapraktikum/internal/agent"
 )
 
 func main() {
