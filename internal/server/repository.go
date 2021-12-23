@@ -14,8 +14,8 @@ var (
 )
 
 type MetricsRepository interface {
-	StoreCounter(counter metrics.Counter) error
-	RetrieveCounter(name string) (metrics.Counter, error)
-	StoreGauge(gauge metrics.Gauge) error
-	RetrieveGauge(name string) (metrics.Gauge, error)
+	StoreCounter(counter metrics.Counter) RepositoryError
+	RetrieveCounter(name string) (metrics.Counter, RepositoryError)
+	StoreGauge(gauge metrics.Gauge) RepositoryError
+	RetrieveGauge(name string) (metrics.Gauge, RepositoryError)
 }
