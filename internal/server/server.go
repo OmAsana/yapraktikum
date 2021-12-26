@@ -32,7 +32,7 @@ func (receiver MetricsServer) UpdateGauge() http.HandlerFunc {
 
 		val, err := strconv.ParseFloat(path[3], 64)
 		if err != nil {
-			http.Error(writer, "value is not float", http.StatusNotFound)
+			http.Error(writer, "value is not float", http.StatusBadRequest)
 			return
 		}
 

@@ -45,7 +45,7 @@ func main() {
 		pkg.CheckRequestMethod(metricsServer.UpdateCounters(), http.MethodPost),
 	)
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		http.Error(w, "not impolemented", http.StatusNotImplemented)
+		http.Error(w, "Not Found", http.StatusNotFound)
 	})
 
 	waitServerShudown := &sync.WaitGroup{}
