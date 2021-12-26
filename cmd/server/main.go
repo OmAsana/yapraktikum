@@ -18,12 +18,12 @@ func logIncoming(w http.ResponseWriter, req *http.Request) {
 
 }
 
-func startHttpServer(wg *sync.WaitGroup) *http.Server {
+func startHTTPServer(wg *sync.WaitGroup) *http.Server {
 	srv := &http.Server{Addr: "127.0.0.1:8080"}
 	go func() {
 		defer wg.Done()
 		if err := srv.ListenAndServe(); err != http.ErrServerClosed {
-			fmt.Println("Server shut down with err: %v", err)
+			fmt.Println("Server shut down with err: ", err)
 		}
 	}()
 	return srv
@@ -55,7 +55,7 @@ func main() {
 	waitServerShudown := &sync.WaitGroup{}
 
 	waitServerShudown.Add(1)
-	httpServer := startHttpServer(waitServerShudown)
+	httpServer := startHTTPServer(waitServerShudown)
 
 	go func() {
 		<-ctx.Done()
