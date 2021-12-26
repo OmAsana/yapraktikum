@@ -7,7 +7,6 @@ import (
 	"os/signal"
 	"sync"
 	"syscall"
-	"time"
 
 	"github.com/OmAsana/yapraktikum/internal/pkg"
 	"github.com/OmAsana/yapraktikum/internal/server"
@@ -60,14 +59,6 @@ func main() {
 	go func() {
 		<-ctx.Done()
 		httpServer.Shutdown(ctx)
-	}()
-
-	go func() {
-		debugTicker := time.NewTicker(time.Second * 2)
-		for {
-			<-debugTicker.C
-			repo.ListStoredMetrics()
-		}
 	}()
 
 	waitServerShudown.Wait()
