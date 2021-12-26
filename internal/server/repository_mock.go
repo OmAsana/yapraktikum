@@ -25,7 +25,7 @@ func (r *RepositoryMock) RetrieveCounter(name string) (metrics.Counter, Reposito
 			Value: v,
 		}, nil
 	}
-	return metrics.Counter{}, errorCounterNotFound
+	return metrics.Counter{}, ErrorCounterNotFound
 }
 
 func (r *RepositoryMock) RetrieveGauge(name string) (metrics.Gauge, RepositoryError) {
@@ -35,7 +35,7 @@ func (r *RepositoryMock) RetrieveGauge(name string) (metrics.Gauge, RepositoryEr
 			Value: v,
 		}, nil
 	}
-	return metrics.Gauge{}, errorGaugeNotFound
+	return metrics.Gauge{}, ErrorGaugeNotFound
 }
 
 func (r *RepositoryMock) StoreCounter(counter metrics.Counter) RepositoryError {

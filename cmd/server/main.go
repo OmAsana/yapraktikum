@@ -65,10 +65,8 @@ func main() {
 	go func() {
 		debugTicker := time.NewTicker(time.Second * 2)
 		for {
-			select {
-			case <-debugTicker.C:
-				repo.ListStoredMetrics()
-			}
+			<-debugTicker.C
+			repo.ListStoredMetrics()
 		}
 	}()
 
