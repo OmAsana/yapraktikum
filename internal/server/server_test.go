@@ -23,35 +23,6 @@ func setupRepo(t *testing.T) MetricsRepository {
 
 func TestMetricsServer_UpdateCounters(t *testing.T) {
 
-	t.Run("Allow only POST http method", func(t *testing.T) {
-		// all except http.MethodGet
-		wrongMethod := []string{
-			http.MethodGet,
-			http.MethodHead,
-			http.MethodPut,
-			http.MethodPatch,
-			http.MethodDelete,
-			http.MethodConnect,
-			http.MethodOptions,
-			http.MethodTrace,
-		}
-
-		srv := NewMetricsServer(setupRepo(t))
-
-		for _, m := range wrongMethod {
-			request := httptest.NewRequest(m, "/", nil)
-
-			w := httptest.NewRecorder()
-			h := srv.UpdateCounters()
-			h.ServeHTTP(w, request)
-			resp := w.Result()
-			defer resp.Body.Close()
-
-			assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
-
-		}
-	})
-
 	t.Run("Allow correct params only", func(t *testing.T) {
 		type params struct {
 			uri        string
@@ -69,15 +40,15 @@ func TestMetricsServer_UpdateCounters(t *testing.T) {
 			},
 			{
 				uri:        "/update",
-				wantStatus: http.StatusBadRequest,
+				wantStatus: http.StatusNotFound,
 			},
 			{
 				uri:        "/update/counter/a",
-				wantStatus: http.StatusBadRequest,
+				wantStatus: http.StatusNotFound,
 			},
 			{
 				uri:        "/update/counter/a/1.2/c",
-				wantStatus: http.StatusBadRequest,
+				wantStatus: http.StatusNotFound,
 			},
 		}
 

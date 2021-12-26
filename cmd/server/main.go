@@ -9,6 +9,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/OmAsana/yapraktikum/internal/pkg"
 	"github.com/OmAsana/yapraktikum/internal/server"
 )
 
@@ -35,11 +36,16 @@ func main() {
 
 	repo := server.NewRepositoryMock()
 	metricsServer := server.NewMetricsServer(repo)
-	http.HandleFunc("/update/gauge/", metricsServer.UpdateGauge())
-	http.HandleFunc("/update/counter/", metricsServer.UpdateCounters())
-	http.HandleFunc("/", func(writer http.ResponseWriter, request *http.Request) {
-		fmt.Println(request.URL.Path)
-
+	http.Handle(
+		"/update/gauge/",
+		pkg.CheckRequestMethod(metricsServer.UpdateGauge(), http.MethodPost),
+	)
+	http.Handle(
+		"/update/counter/",
+		pkg.CheckRequestMethod(metricsServer.UpdateCounters(), http.MethodPost),
+	)
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "not impolemented", http.StatusNotImplemented)
 	})
 
 	waitServerShudown := &sync.WaitGroup{}

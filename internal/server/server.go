@@ -19,13 +19,9 @@ func NewMetricsServer(db MetricsRepository) *MetricsServer {
 
 func (receiver MetricsServer) UpdateGauge() http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
-		if request.Method != http.MethodPost {
-			http.Error(writer, "method not supported", http.StatusBadRequest)
-			return
-		}
 		path := strings.Split(strings.TrimPrefix(request.URL.Path, "/"), "/")
 		if len(path) != 4 {
-			http.Error(writer, "invalid parameters", http.StatusBadRequest)
+			http.Error(writer, "invalid parameters", http.StatusNotFound)
 			return
 		}
 
@@ -36,7 +32,7 @@ func (receiver MetricsServer) UpdateGauge() http.HandlerFunc {
 
 		val, err := strconv.ParseFloat(path[3], 64)
 		if err != nil {
-			http.Error(writer, "value is not float", http.StatusBadRequest)
+			http.Error(writer, "value is not float", http.StatusNotFound)
 			return
 		}
 
@@ -62,14 +58,9 @@ func (receiver MetricsServer) UpdateGauge() http.HandlerFunc {
 func (receiver MetricsServer) UpdateCounters() http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
 
-		if request.Method != http.MethodPost {
-			http.Error(writer, "method not supported", http.StatusBadRequest)
-			return
-		}
-
 		path := strings.Split(strings.TrimPrefix(request.URL.Path, "/"), "/")
 		if len(path) != 4 {
-			http.Error(writer, "invalid parameters", http.StatusBadRequest)
+			http.Error(writer, "invalid parameters", http.StatusNotFound)
 			return
 		}
 
