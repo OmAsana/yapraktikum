@@ -44,6 +44,10 @@ func main() {
 		"/update/counter/",
 		pkg.CheckRequestMethod(metricsServer.UpdateCounters(), http.MethodPost),
 	)
+	http.HandleFunc("/update/", func(writer http.ResponseWriter, request *http.Request) {
+		http.Error(writer, "not implemented", http.StatusNotImplemented)
+
+	})
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Not Found", http.StatusNotFound)
 	})
