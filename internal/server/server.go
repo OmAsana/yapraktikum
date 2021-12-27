@@ -39,7 +39,7 @@ func NewMetricsServer(db MetricsRepository) *MetricsServer {
 		r.Route("/gauge/", func(r chi.Router) {
 			r.Post("/{gaugeName}/{gaugeValue}", srv.UpdateGauge())
 		})
-		r.Post("/", func(writer http.ResponseWriter, request *http.Request) {
+		r.Post("/*", func(writer http.ResponseWriter, request *http.Request) {
 			http.Error(writer, "not implemented", http.StatusNotImplemented)
 		})
 
