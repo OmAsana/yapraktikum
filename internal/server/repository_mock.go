@@ -1,10 +1,10 @@
 package server
 
 import (
-	"fmt"
-
 	"github.com/OmAsana/yapraktikum/internal/metrics"
 )
+
+var _ MetricsRepository = &RepositoryMock{}
 
 type RepositoryMock struct {
 	gauges   map[string]float64
@@ -54,12 +54,23 @@ func (r *RepositoryMock) StoreGauge(gauge metrics.Gauge) RepositoryError {
 	return nil
 }
 
-func (r *RepositoryMock) ListStoredMetrics() {
+func (r *RepositoryMock) ListStoredMetrics() ([]metrics.Gauge, []metrics.Counter, RepositoryError) {
+	var gauges []metrics.Gauge
+	var couter []metrics.Counter
+
 	for k, v := range r.gauges {
-		fmt.Printf("name: %s, val:%f\n", k, v)
-	}
-	for k, v := range r.counters {
-		fmt.Printf("name: %s, val:%d\n", k, v)
+		gauges = append(gauges, metrics.Gauge{
+			Name:  k,
+			Value: v,
+		})
 	}
 
+	for k, v := range r.counters {
+		couter = append(couter, metrics.Counter{
+			Name:  k,
+			Value: v,
+		})
+	}
+
+	return gauges, couter, nil
 }

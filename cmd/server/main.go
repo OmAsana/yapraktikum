@@ -8,7 +8,6 @@ import (
 	"sync"
 	"syscall"
 
-	"github.com/OmAsana/yapraktikum/internal/pkg"
 	"github.com/OmAsana/yapraktikum/internal/server"
 )
 
@@ -17,8 +16,8 @@ func logIncoming(w http.ResponseWriter, req *http.Request) {
 
 }
 
-func startHTTPServer(wg *sync.WaitGroup) *http.Server {
-	srv := &http.Server{Addr: "127.0.0.1:8080"}
+func startHTTPServer(wg *sync.WaitGroup, handler http.Handler) *http.Server {
+	srv := &http.Server{Addr: "127.0.0.1:8080", Handler: handler}
 	go func() {
 		defer wg.Done()
 		if err := srv.ListenAndServe(); err != http.ErrServerClosed {
@@ -35,26 +34,26 @@ func main() {
 
 	repo := server.NewRepositoryMock()
 	metricsServer := server.NewMetricsServer(repo)
-	http.Handle(
-		"/update/gauge/",
-		pkg.CheckRequestMethod(metricsServer.UpdateGauge(), http.MethodPost),
-	)
-	http.Handle(
-		"/update/counter/",
-		pkg.CheckRequestMethod(metricsServer.UpdateCounters(), http.MethodPost),
-	)
-	http.HandleFunc("/update/", func(writer http.ResponseWriter, request *http.Request) {
-		http.Error(writer, "not implemented", http.StatusNotImplemented)
-
-	})
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		http.Error(w, "Not Found", http.StatusNotFound)
-	})
+	//http.Handle(
+	//	"/update/gauge/",
+	//	pkg.CheckRequestMethod(metricsServer.UpdateGauge(), http.MethodPost),
+	//)
+	//http.Handle(
+	//	"/update/counter/",
+	//	pkg.CheckRequestMethod(metricsServer.UpdateCounters(), http.MethodPost),
+	//)
+	//http.HandleFunc("/update/", func(writer http.ResponseWriter, request *http.Request) {
+	//	http.Error(writer, "not implemented", http.StatusNotImplemented)
+	//
+	//})
+	//http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+	//	http.Error(w, "Not Found", http.StatusNotFound)
+	//})
 
 	waitServerShudown := &sync.WaitGroup{}
 
 	waitServerShudown.Add(1)
-	httpServer := startHTTPServer(waitServerShudown)
+	httpServer := startHTTPServer(waitServerShudown, metricsServer)
 
 	go func() {
 		<-ctx.Done()

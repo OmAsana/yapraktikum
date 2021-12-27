@@ -18,4 +18,5 @@ type MetricsRepository interface {
 	RetrieveCounter(name string) (metrics.Counter, RepositoryError)
 	StoreGauge(gauge metrics.Gauge) RepositoryError
 	RetrieveGauge(name string) (metrics.Gauge, RepositoryError)
+	ListStoredMetrics() ([]metrics.Gauge, []metrics.Counter, RepositoryError)
 }
