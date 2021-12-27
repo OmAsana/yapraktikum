@@ -30,7 +30,7 @@ func NewMetricsServer(db MetricsRepository) *MetricsServer {
 	srv.Use(middleware.Recoverer)
 
 	srv.Get("/", srv.ReturnCurrentMetrics())
-	srv.Get("/value/{metricType:counter|gauge}/{metricName}", srv.GetMetric())
+	srv.Get("/value/{metricType}/{metricName}", srv.GetMetric())
 
 	srv.Route("/update", func(r chi.Router) {
 		r.Route("/counter/", func(r chi.Router) {
