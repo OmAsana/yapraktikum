@@ -11,11 +11,6 @@ import (
 	"github.com/OmAsana/yapraktikum/internal/server"
 )
 
-func logIncoming(w http.ResponseWriter, req *http.Request) {
-	fmt.Println(req.URL)
-
-}
-
 func startHTTPServer(wg *sync.WaitGroup, handler http.Handler) *http.Server {
 	srv := &http.Server{Addr: "127.0.0.1:8080", Handler: handler}
 	go func() {
@@ -34,32 +29,17 @@ func main() {
 
 	repo := server.NewRepositoryMock()
 	metricsServer := server.NewMetricsServer(repo)
-	//http.Handle(
-	//	"/update/gauge/",
-	//	pkg.CheckRequestMethod(metricsServer.UpdateGauge(), http.MethodPost),
-	//)
-	//http.Handle(
-	//	"/update/counter/",
-	//	pkg.CheckRequestMethod(metricsServer.UpdateCounters(), http.MethodPost),
-	//)
-	//http.HandleFunc("/update/", func(writer http.ResponseWriter, request *http.Request) {
-	//	http.Error(writer, "not implemented", http.StatusNotImplemented)
-	//
-	//})
-	//http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-	//	http.Error(w, "Not Found", http.StatusNotFound)
-	//})
 
-	waitServerShudown := &sync.WaitGroup{}
+	waitServerShutdown := &sync.WaitGroup{}
 
-	waitServerShudown.Add(1)
-	httpServer := startHTTPServer(waitServerShudown, metricsServer)
+	waitServerShutdown.Add(1)
+	httpServer := startHTTPServer(waitServerShutdown, metricsServer)
 
 	go func() {
 		<-ctx.Done()
 		httpServer.Shutdown(ctx)
 	}()
 
-	waitServerShudown.Wait()
+	waitServerShutdown.Wait()
 
 }
