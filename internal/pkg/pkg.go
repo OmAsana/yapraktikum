@@ -1,6 +1,9 @@
 package pkg
 
-import "net/http"
+import (
+	"math"
+	"net/http"
+)
 
 func CheckRequestMethod(next http.Handler, method string) http.Handler {
 	return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
@@ -11,4 +14,12 @@ func CheckRequestMethod(next http.Handler, method string) http.Handler {
 
 		next.ServeHTTP(writer, request)
 	})
+}
+
+//FloatIsNumber check that f is not an inf or NaN
+func FloatIsNumber(f float64) bool {
+	if math.IsInf(f, 0) || math.IsNaN(f) {
+		return false
+	}
+	return true
 }
