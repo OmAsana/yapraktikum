@@ -266,6 +266,7 @@ func TestGetMetric(t *testing.T) {
 					require.Equal(t, http.StatusOK, resp.StatusCode, body)
 				}
 				resp, body := testRequest(t, ts, http.MethodGet, fmt.Sprintf("/value/gauge/%s", test.gaugeName))
+				defer resp.Body.Close()
 				require.Equal(t, http.StatusOK, resp.StatusCode, body)
 				require.Equal(t, strconv.FormatFloat(test.wantValue, 'g', -1, 64), body)
 
@@ -308,6 +309,7 @@ func TestGetMetric(t *testing.T) {
 					require.Equal(t, http.StatusOK, resp.StatusCode, body)
 				}
 				resp, body := testRequest(t, ts, http.MethodGet, fmt.Sprintf("/value/counter/%s", test.counterName))
+				defer resp.Body.Close()
 				require.Equal(t, http.StatusOK, resp.StatusCode, body)
 				require.Equal(t, strconv.FormatInt(test.wantValue, 10), body)
 
