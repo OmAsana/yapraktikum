@@ -15,7 +15,7 @@ import (
 	"github.com/OmAsana/yapraktikum/internal/metrics"
 )
 
-func setupRepo(t *testing.T) MetricsRepository {
+func SetupRepo(t *testing.T) MetricsRepository {
 	t.Helper()
 	repo := NewRepositoryMock()
 	return repo
@@ -38,7 +38,7 @@ func testRequest(t *testing.T, ts *httptest.Server, method, path string) (*http.
 }
 
 func TestServer(t *testing.T) {
-	srv := NewMetricsServer(setupRepo(t))
+	srv := NewMetricsServer(SetupRepo(t))
 	ts := httptest.NewServer(srv)
 	defer ts.Close()
 
@@ -77,7 +77,7 @@ func TestMetricsServer_UpdateCounters(t *testing.T) {
 
 		for _, test := range tests {
 			t.Run(test.uri, func(t *testing.T) {
-				srv := NewMetricsServer(setupRepo(t))
+				srv := NewMetricsServer(SetupRepo(t))
 				ts := httptest.NewServer(srv)
 				defer ts.Close()
 				resp, body := testRequest(t, ts, http.MethodPost, test.uri)
@@ -132,7 +132,7 @@ func TestMetricsServer_UpdateCounters(t *testing.T) {
 
 		for _, test := range tests {
 			t.Run(test.name, func(t *testing.T) {
-				srv := NewMetricsServer(setupRepo(t))
+				srv := NewMetricsServer(SetupRepo(t))
 				ts := httptest.NewServer(srv)
 				defer ts.Close()
 				for _, counter := range test.inputCounters {
@@ -157,53 +157,6 @@ func TestMetricsServer_UpdateCounters(t *testing.T) {
 		}
 
 	})
-}
-
-func Test_floatIsNumber(t *testing.T) {
-	type args struct {
-		float    string
-		isNumber bool
-	}
-	tests := []args{
-		{
-			"NaN",
-			false,
-		},
-		{
-			"inf",
-			false,
-		},
-		{
-			"-inf",
-			false,
-		},
-		{
-			"+inf",
-			false,
-		},
-		{
-			"-0",
-			true,
-		},
-		{
-			"0",
-			true,
-		},
-		{
-			"1.2",
-			true,
-		},
-	}
-
-	for _, test := range tests {
-		t.Run(fmt.Sprintf("Test float %q", test.float), func(t *testing.T) {
-			val, err := strconv.ParseFloat(test.float, 64)
-			require.NoError(t, err)
-			require.Equal(t, test.isNumber, floatIsNumber(val))
-
-		})
-
-	}
 }
 
 func TestMetricsServer_UpdateGauge(t *testing.T) {
@@ -253,7 +206,7 @@ func TestMetricsServer_UpdateGauge(t *testing.T) {
 
 		for _, test := range tests {
 			t.Run(test.name, func(t *testing.T) {
-				srv := NewMetricsServer(setupRepo(t))
+				srv := NewMetricsServer(SetupRepo(t))
 				ts := httptest.NewServer(srv)
 				defer ts.Close()
 				for _, g := range test.inputGauge {
@@ -301,7 +254,7 @@ func TestGetMetric(t *testing.T) {
 
 		for _, test := range tests {
 			t.Run(test.name, func(t *testing.T) {
-				srv := NewMetricsServer(setupRepo(t))
+				srv := NewMetricsServer(SetupRepo(t))
 				ts := httptest.NewServer(srv)
 				defer ts.Close()
 				for _, val := range test.insertValues {
@@ -342,7 +295,7 @@ func TestGetMetric(t *testing.T) {
 
 		for _, test := range tests {
 			t.Run(test.name, func(t *testing.T) {
-				srv := NewMetricsServer(setupRepo(t))
+				srv := NewMetricsServer(SetupRepo(t))
 				ts := httptest.NewServer(srv)
 				defer ts.Close()
 				for _, val := range test.insertValues {

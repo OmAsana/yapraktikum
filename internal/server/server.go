@@ -3,7 +3,6 @@ package server
 import (
 	"fmt"
 	"io"
-	"math"
 	"net/http"
 	"strconv"
 	"strings"
@@ -12,6 +11,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 
 	"github.com/OmAsana/yapraktikum/internal/metrics"
+	"github.com/OmAsana/yapraktikum/internal/pkg"
 )
 
 type MetricsServer struct {
@@ -102,7 +102,7 @@ func (receiver MetricsServer) UpdateGauge() http.HandlerFunc {
 			return
 		}
 
-		if !floatIsNumber(val) {
+		if !pkg.FloatIsNumber(val) {
 			http.Error(writer, "float must be a number", http.StatusBadRequest)
 			return
 		}
@@ -173,12 +173,4 @@ func (receiver MetricsServer) ReturnCurrentMetrics() http.HandlerFunc {
 		sb.Reset()
 		writer.WriteHeader(http.StatusOK)
 	}
-}
-
-//floatIsNumber check that f is not an inf or NaN
-func floatIsNumber(f float64) bool {
-	if math.IsInf(f, 0) || math.IsNaN(f) {
-		return false
-	}
-	return true
 }
