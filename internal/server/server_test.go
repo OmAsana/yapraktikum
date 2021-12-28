@@ -81,6 +81,7 @@ func TestMetricsServer_UpdateCounters(t *testing.T) {
 				ts := httptest.NewServer(srv)
 				defer ts.Close()
 				resp, body := testRequest(t, ts, http.MethodPost, test.uri)
+				defer resp.Body.Close()
 				require.Equal(
 					t,
 					test.wantStatus,
@@ -137,6 +138,7 @@ func TestMetricsServer_UpdateCounters(t *testing.T) {
 				defer ts.Close()
 				for _, counter := range test.inputCounters {
 					resp, body := testRequest(t, ts, http.MethodPost, fmt.Sprintf("/update/counter/%s/%d", counter.Name, counter.Value))
+					defer resp.Body.Close()
 					require.Equal(t, test.wantStatus, resp.StatusCode, body)
 
 				}
@@ -211,6 +213,7 @@ func TestMetricsServer_UpdateGauge(t *testing.T) {
 				defer ts.Close()
 				for _, g := range test.inputGauge {
 					resp, body := testRequest(t, ts, http.MethodPost, fmt.Sprintf("/update/gauge/%s/%f", g.Name, g.Value))
+					defer resp.Body.Close()
 					require.Equal(t, test.wantStatus, resp.StatusCode, body)
 				}
 				if test.wantStatus == http.StatusOK {
@@ -259,6 +262,7 @@ func TestGetMetric(t *testing.T) {
 				defer ts.Close()
 				for _, val := range test.insertValues {
 					resp, body := testRequest(t, ts, http.MethodPost, fmt.Sprintf("/update/gauge/%s/%f", test.gaugeName, val))
+					defer resp.Body.Close()
 					require.Equal(t, http.StatusOK, resp.StatusCode, body)
 				}
 				resp, body := testRequest(t, ts, http.MethodGet, fmt.Sprintf("/value/gauge/%s", test.gaugeName))
@@ -300,6 +304,7 @@ func TestGetMetric(t *testing.T) {
 				defer ts.Close()
 				for _, val := range test.insertValues {
 					resp, body := testRequest(t, ts, http.MethodPost, fmt.Sprintf("/update/counter/%s/%d", test.counterName, val))
+					defer resp.Body.Close()
 					require.Equal(t, http.StatusOK, resp.StatusCode, body)
 				}
 				resp, body := testRequest(t, ts, http.MethodGet, fmt.Sprintf("/value/counter/%s", test.counterName))

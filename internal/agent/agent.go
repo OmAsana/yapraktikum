@@ -80,7 +80,7 @@ func (a *Agent) sendRequest(path string) error {
 		if err != nil {
 			return errors.New(err.Error())
 		}
-		return errors.New(fmt.Sprintf("something went wrong: %s", string(bodyBytes)))
+		return fmt.Errorf("something went wrong: %s", string(bodyBytes))
 	}
 
 	defer resp.Body.Close()
