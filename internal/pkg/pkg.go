@@ -18,8 +18,17 @@ func CheckRequestMethod(next http.Handler, method string) http.Handler {
 
 //FloatIsNumber check that f is not an inf or NaN
 func FloatIsNumber(f float64) bool {
+
 	if math.IsInf(f, 0) || math.IsNaN(f) {
 		return false
 	}
 	return true
+}
+
+func Contains(list []string, value string) bool {
+	for _, v := range list {
+		return v == value
+	}
+
+	return false
 }

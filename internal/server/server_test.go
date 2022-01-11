@@ -2,11 +2,13 @@ package server
 
 import (
 	"fmt"
+	"io"
 	"io/ioutil"
 	"math"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -21,9 +23,9 @@ func SetupRepo(t *testing.T) MetricsRepository {
 	return repo
 }
 
-func testRequest(t *testing.T, ts *httptest.Server, method, path string) (*http.Response, string) {
+func testRequest(t *testing.T, ts *httptest.Server, method, path string, body io.Reader) (*http.Response, string) {
 	t.Helper()
-	req, err := http.NewRequest(method, ts.URL+path, nil)
+	req, err := http.NewRequest(method, ts.URL+path, body)
 	require.NoError(t, err)
 
 	resp, err := http.DefaultClient.Do(req)
@@ -35,6 +37,23 @@ func testRequest(t *testing.T, ts *httptest.Server, method, path string) (*http.
 	defer resp.Body.Close()
 
 	return resp, string(respBody)
+}
+
+func executeTestRequest(t *testing.T, ts *httptest.Server, reqFunc func() (*http.Request, error)) (*http.Response, string) {
+	t.Helper()
+	req, err := reqFunc()
+	require.NoError(t, err)
+
+	resp, err := http.DefaultClient.Do(req)
+	require.NoError(t, err)
+
+	respBody, err := ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+
+	defer resp.Body.Close()
+
+	return resp, string(respBody)
+
 }
 
 func TestServer(t *testing.T) {
@@ -80,7 +99,7 @@ func TestMetricsServer_UpdateCounters(t *testing.T) {
 				srv := NewMetricsServer(SetupRepo(t))
 				ts := httptest.NewServer(srv)
 				defer ts.Close()
-				resp, body := testRequest(t, ts, http.MethodPost, test.uri)
+				resp, body := testRequest(t, ts, http.MethodPost, test.uri, nil)
 				defer resp.Body.Close()
 				require.Equal(
 					t,
@@ -137,7 +156,7 @@ func TestMetricsServer_UpdateCounters(t *testing.T) {
 				ts := httptest.NewServer(srv)
 				defer ts.Close()
 				for _, counter := range test.inputCounters {
-					resp, body := testRequest(t, ts, http.MethodPost, fmt.Sprintf("/update/counter/%s/%d", counter.Name, counter.Value))
+					resp, body := testRequest(t, ts, http.MethodPost, fmt.Sprintf("/update/counter/%s/%d", counter.Name, counter.Value), nil)
 					defer resp.Body.Close()
 					require.Equal(t, test.wantStatus, resp.StatusCode, body)
 
@@ -212,7 +231,7 @@ func TestMetricsServer_UpdateGauge(t *testing.T) {
 				ts := httptest.NewServer(srv)
 				defer ts.Close()
 				for _, g := range test.inputGauge {
-					resp, body := testRequest(t, ts, http.MethodPost, fmt.Sprintf("/update/gauge/%s/%f", g.Name, g.Value))
+					resp, body := testRequest(t, ts, http.MethodPost, fmt.Sprintf("/update/gauge/%s/%f", g.Name, g.Value), nil)
 					defer resp.Body.Close()
 					require.Equal(t, test.wantStatus, resp.StatusCode, body)
 				}
@@ -261,11 +280,11 @@ func TestGetMetric(t *testing.T) {
 				ts := httptest.NewServer(srv)
 				defer ts.Close()
 				for _, val := range test.insertValues {
-					resp, body := testRequest(t, ts, http.MethodPost, fmt.Sprintf("/update/gauge/%s/%f", test.gaugeName, val))
+					resp, body := testRequest(t, ts, http.MethodPost, fmt.Sprintf("/update/gauge/%s/%f", test.gaugeName, val), nil)
 					defer resp.Body.Close()
 					require.Equal(t, http.StatusOK, resp.StatusCode, body)
 				}
-				resp, body := testRequest(t, ts, http.MethodGet, fmt.Sprintf("/value/gauge/%s", test.gaugeName))
+				resp, body := testRequest(t, ts, http.MethodGet, fmt.Sprintf("/value/gauge/%s", test.gaugeName), nil)
 				defer resp.Body.Close()
 				require.Equal(t, http.StatusOK, resp.StatusCode, body)
 				require.Equal(t, strconv.FormatFloat(test.wantValue, 'g', -1, 64), body)
@@ -304,11 +323,11 @@ func TestGetMetric(t *testing.T) {
 				ts := httptest.NewServer(srv)
 				defer ts.Close()
 				for _, val := range test.insertValues {
-					resp, body := testRequest(t, ts, http.MethodPost, fmt.Sprintf("/update/counter/%s/%d", test.counterName, val))
+					resp, body := testRequest(t, ts, http.MethodPost, fmt.Sprintf("/update/counter/%s/%d", test.counterName, val), nil)
 					defer resp.Body.Close()
 					require.Equal(t, http.StatusOK, resp.StatusCode, body)
 				}
-				resp, body := testRequest(t, ts, http.MethodGet, fmt.Sprintf("/value/counter/%s", test.counterName))
+				resp, body := testRequest(t, ts, http.MethodGet, fmt.Sprintf("/value/counter/%s", test.counterName), nil)
 				defer resp.Body.Close()
 				require.Equal(t, http.StatusOK, resp.StatusCode, body)
 				require.Equal(t, strconv.FormatInt(test.wantValue, 10), body)
@@ -318,5 +337,116 @@ func TestGetMetric(t *testing.T) {
 		}
 
 	})
+
+}
+
+func TestMetricsServer_Update(t *testing.T) {
+	type params struct {
+		name          string
+		rawMetricJson string
+		header        string
+		wantCode      int
+	}
+
+	tests := []params{
+		{
+			name: "valid counter",
+			rawMetricJson: `{
+"id": "counter1",
+"type": "counter",
+"delta": 22
+}`,
+			header:   "application/json",
+			wantCode: http.StatusOK,
+		},
+		{
+			name: "invalid counter. wrong delta type",
+			rawMetricJson: `{
+"id": "counter1",
+"type": "counter",
+"delta": 1.02
+}`,
+			header:   "application/json",
+			wantCode: http.StatusBadRequest,
+		},
+		{
+			name: "invalid metric. delta or value must be set",
+			rawMetricJson: `{
+"id": "counter1",
+"type": "counter"
+}`,
+			header:   "application/json",
+			wantCode: http.StatusBadRequest,
+		},
+		{
+			name: "valid gauge",
+			rawMetricJson: `{
+"id": "gauge1",
+"type": "gauge",
+"value": 1.02
+}`,
+			header:   "application/json",
+			wantCode: http.StatusOK,
+		},
+		{
+			name: "invalid gauge. wrong value type",
+			rawMetricJson: `{
+"id": "gauge1",
+"type": "gauge",
+"value": "some val"
+}`,
+			header:   "application/json",
+			wantCode: http.StatusBadRequest,
+		},
+		{
+			name: "invalid json values",
+			rawMetricJson: `{
+"some": true,
+"random": true,
+"json": true
+}`,
+			header:   "application/json",
+			wantCode: http.StatusBadRequest,
+		},
+		{
+			name: "invalid accept header",
+			rawMetricJson: `{
+"some": true,
+"random": true,
+"json": true
+}`,
+			header:   "application/txt",
+			wantCode: http.StatusNotImplemented,
+		},
+	}
+
+	for _, tt := range tests {
+
+		t.Run(tt.name, func(t *testing.T) {
+			srv := NewMetricsServer(SetupRepo(t))
+			ts := httptest.NewServer(srv)
+			defer ts.Close()
+			resp, body := executeTestRequest(t, ts, func() (*http.Request, error) {
+				req, err := http.NewRequest(http.MethodPost, ts.URL+"/update/", strings.NewReader(tt.rawMetricJson))
+				if err != nil {
+					return req, err
+				}
+
+				req.Header.Set("Accept", tt.header)
+				return req, err
+			})
+			defer resp.Body.Close()
+
+			require.Equal(t, tt.wantCode, resp.StatusCode, body)
+		})
+		//for _, counter := range test.inputCounters {
+		//	defer resp.Body.Close()
+		//	require.Equal(t, test.wantStatus, resp.StatusCode, body)
+		//
+		//}	t.Run(tt.name, func(t *testing.T) {
+		//
+		//})
+
+	}
 
 }

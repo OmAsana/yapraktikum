@@ -1,6 +1,7 @@
 package server
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -10,6 +11,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 
+	"github.com/OmAsana/yapraktikum/internal/handlers"
 	"github.com/OmAsana/yapraktikum/internal/metrics"
 	"github.com/OmAsana/yapraktikum/internal/pkg"
 )
@@ -39,13 +41,72 @@ func NewMetricsServer(db MetricsRepository) *MetricsServer {
 		r.Route("/gauge/", func(r chi.Router) {
 			r.Post("/{gaugeName}/{gaugeValue}", srv.UpdateGauge())
 		})
-		r.Post("/*", func(writer http.ResponseWriter, request *http.Request) {
-			http.Error(writer, "not implemented", http.StatusNotImplemented)
-		})
+		r.Post("/", srv.Update())
 
 	})
 
 	return srv
+}
+
+func (receiver MetricsServer) Update() http.HandlerFunc {
+	return func(writer http.ResponseWriter, request *http.Request) {
+		if !pkg.Contains(request.Header.Values("accept"), "application/json") {
+			http.Error(writer, "not implemented", http.StatusNotImplemented)
+		}
+
+		var m handlers.Metrics
+		err := json.NewDecoder(request.Body).Decode(&m)
+		if err != nil {
+			fmt.Println(err)
+			http.Error(writer, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		switch m.MType {
+		case "counter":
+			if m.Delta == nil {
+				http.Error(writer, "delta can not be nil", http.StatusBadRequest)
+				return
+			}
+
+			c := metrics.Counter{
+				Name:  m.ID,
+				Value: *m.Delta,
+			}
+
+			err := receiver.db.StoreCounter(c)
+			if err != nil {
+				http.Error(writer, "internal error", http.StatusInternalServerError)
+				return
+			}
+			writer.WriteHeader(http.StatusOK)
+			return
+		case "gauge":
+			if m.Value == nil {
+				http.Error(writer, "value can not be nil", http.StatusBadRequest)
+				return
+			}
+
+			g := metrics.Gauge{
+				Name:  m.ID,
+				Value: *m.Value,
+			}
+
+			err := receiver.db.StoreGauge(g)
+			if err != nil {
+				http.Error(writer, "internal error", http.StatusInternalServerError)
+				return
+			}
+			writer.WriteHeader(http.StatusOK)
+			return
+		default:
+			http.Error(writer, "wrong metric type", http.StatusBadRequest)
+		}
+		//if m.Value || m.Delta
+		//	fmt.Println(m)
+
+		http.Error(writer, "not implemented", http.StatusNotImplemented)
+	}
 }
 
 func (receiver MetricsServer) GetMetric() http.HandlerFunc {
@@ -126,15 +187,9 @@ func (receiver MetricsServer) UpdateCounters() http.HandlerFunc {
 		metricName := chi.URLParam(request, "counterName")
 		value := chi.URLParam(request, "counterValue")
 
-		val, err := strconv.ParseInt(value, 10, 64)
+		val, err := validateCounter(value)
 		if err != nil {
-			http.Error(writer, "value is not int", http.StatusBadRequest)
-			return
-
-		}
-
-		if val < 0 {
-			http.Error(writer, "counter can not be negative", http.StatusBadRequest)
+			http.Error(writer, err.Error(), http.StatusBadRequest)
 			return
 		}
 
@@ -149,6 +204,19 @@ func (receiver MetricsServer) UpdateCounters() http.HandlerFunc {
 		}
 		writer.WriteHeader(http.StatusOK)
 	}
+}
+
+func validateCounter(value string) (int64, error) {
+	val, err := strconv.ParseInt(value, 10, 64)
+	if err != nil {
+		return val, fmt.Errorf("value is not int")
+
+	}
+
+	if val < 0 {
+		return val, fmt.Errorf("counter can not be negative")
+	}
+	return val, err
 }
 
 func (receiver MetricsServer) ReturnCurrentMetrics() http.HandlerFunc {

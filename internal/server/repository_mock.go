@@ -39,6 +39,11 @@ func (r *RepositoryMock) RetrieveGauge(name string) (metrics.Gauge, RepositoryEr
 }
 
 func (r *RepositoryMock) StoreCounter(counter metrics.Counter) RepositoryError {
+	err := counter.IsValid()
+	if err != nil {
+		return ErrorCounterIsNoValid
+	}
+
 	_, ok := r.counters[counter.Name]
 	if ok {
 		r.counters[counter.Name] += counter.Value
