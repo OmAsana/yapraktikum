@@ -77,14 +77,6 @@ func (receiver MetricsServer) Value() http.HandlerFunc {
 
 			m.Delta = &c.Value
 
-			out, err := json.Marshal(m)
-			if err != nil {
-				http.Error(writer, err.Error(), http.StatusInternalServerError)
-				return
-			}
-
-			writer.Write(out)
-			return
 		case "gauge":
 			g, err := receiver.db.RetrieveGauge(m.ID)
 			if err != nil {
@@ -94,20 +86,21 @@ func (receiver MetricsServer) Value() http.HandlerFunc {
 
 			m.Value = &g.Value
 
-			out, err := json.Marshal(m)
-			if err != nil {
-				http.Error(writer, err.Error(), http.StatusInternalServerError)
-				return
-			}
-
-			writer.Write(out)
-			return
 		default:
 			http.NotFound(writer, request)
 			return
 
 		}
 
+		out, err := json.Marshal(m)
+		if err != nil {
+			http.Error(writer, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		writer.Header().Add("Content-Type", "application/json")
+		writer.Write(out)
+		return
 	}
 }
 
