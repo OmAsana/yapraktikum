@@ -71,6 +71,7 @@ func (receiver MetricsServer) Value() http.HandlerFunc {
 		case "counter":
 			c, err := receiver.db.RetrieveCounter(m.ID)
 			if err != nil {
+				fmt.Printf("Not found metric %+v", m)
 				http.Error(writer, err.Error(), http.StatusNotFound)
 				return
 			}
@@ -80,6 +81,7 @@ func (receiver MetricsServer) Value() http.HandlerFunc {
 		case "gauge":
 			g, err := receiver.db.RetrieveGauge(m.ID)
 			if err != nil {
+				fmt.Printf("Not found metric %+v", m)
 				http.Error(writer, err.Error(), http.StatusNotFound)
 				return
 			}
@@ -87,7 +89,6 @@ func (receiver MetricsServer) Value() http.HandlerFunc {
 			m.Value = &g.Value
 
 		default:
-			fmt.Printf("Not found metric %+v", m)
 			http.NotFound(writer, request)
 			return
 
