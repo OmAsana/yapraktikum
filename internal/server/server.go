@@ -34,6 +34,8 @@ func NewMetricsServer(db MetricsRepository) *MetricsServer {
 	srv.Get("/", srv.ReturnCurrentMetrics())
 	srv.Get("/value/{metricType}/{metricName}", srv.GetMetric())
 
+	srv.Post("/value", srv.Value())
+
 	srv.Route("/update", func(r chi.Router) {
 		r.Route("/counter/", func(r chi.Router) {
 			r.Post("/{counterName}/{counterValue}", srv.UpdateCounters())
@@ -46,6 +48,41 @@ func NewMetricsServer(db MetricsRepository) *MetricsServer {
 	})
 
 	return srv
+}
+
+func (receiver MetricsServer) Value() http.HandlerFunc {
+	return func(writer http.ResponseWriter, request *http.Request) {
+		if !pkg.Contains(request.Header.Values("accept"), "application/json") {
+			http.Error(writer, "not implemented", http.StatusNotImplemented)
+		}
+
+		var m handlers.Metrics
+		err := json.NewDecoder(request.Body).Decode(&m)
+		if err != nil {
+			http.Error(writer, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		switch m.MType {
+		case "counter":
+			c, err := receiver.db.RetrieveCounter(m.ID)
+			if err != nil {
+				http.Error(writer, err.Error(), http.StatusBadRequest)
+			}
+
+			m.Delta = &c.Value
+
+			out, err := json.Marshal(m)
+			if err != nil {
+				http.Error(writer, err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			writer.Write(out)
+			return
+		}
+
+	}
 }
 
 func (receiver MetricsServer) Update() http.HandlerFunc {

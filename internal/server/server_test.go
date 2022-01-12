@@ -343,7 +343,7 @@ func TestGetMetric(t *testing.T) {
 func TestMetricsServer_Update(t *testing.T) {
 	type params struct {
 		name          string
-		rawMetricJson string
+		rawMetricJSON string
 		header        string
 		wantCode      int
 	}
@@ -351,7 +351,7 @@ func TestMetricsServer_Update(t *testing.T) {
 	tests := []params{
 		{
 			name: "valid counter",
-			rawMetricJson: `{
+			rawMetricJSON: `{
 "id": "counter1",
 "type": "counter",
 "delta": 22
@@ -361,7 +361,7 @@ func TestMetricsServer_Update(t *testing.T) {
 		},
 		{
 			name: "invalid counter. wrong delta type",
-			rawMetricJson: `{
+			rawMetricJSON: `{
 "id": "counter1",
 "type": "counter",
 "delta": 1.02
@@ -371,7 +371,7 @@ func TestMetricsServer_Update(t *testing.T) {
 		},
 		{
 			name: "invalid metric. delta or value must be set",
-			rawMetricJson: `{
+			rawMetricJSON: `{
 "id": "counter1",
 "type": "counter"
 }`,
@@ -380,7 +380,7 @@ func TestMetricsServer_Update(t *testing.T) {
 		},
 		{
 			name: "valid gauge",
-			rawMetricJson: `{
+			rawMetricJSON: `{
 "id": "gauge1",
 "type": "gauge",
 "value": 1.02
@@ -390,7 +390,7 @@ func TestMetricsServer_Update(t *testing.T) {
 		},
 		{
 			name: "invalid gauge. wrong value type",
-			rawMetricJson: `{
+			rawMetricJSON: `{
 "id": "gauge1",
 "type": "gauge",
 "value": "some val"
@@ -400,7 +400,7 @@ func TestMetricsServer_Update(t *testing.T) {
 		},
 		{
 			name: "invalid json values",
-			rawMetricJson: `{
+			rawMetricJSON: `{
 "some": true,
 "random": true,
 "json": true
@@ -410,7 +410,7 @@ func TestMetricsServer_Update(t *testing.T) {
 		},
 		{
 			name: "invalid accept header",
-			rawMetricJson: `{
+			rawMetricJSON: `{
 "some": true,
 "random": true,
 "json": true
@@ -427,7 +427,7 @@ func TestMetricsServer_Update(t *testing.T) {
 			ts := httptest.NewServer(srv)
 			defer ts.Close()
 			resp, body := executeTestRequest(t, ts, func() (*http.Request, error) {
-				req, err := http.NewRequest(http.MethodPost, ts.URL+"/update/", strings.NewReader(tt.rawMetricJson))
+				req, err := http.NewRequest(http.MethodPost, ts.URL+"/update/", strings.NewReader(tt.rawMetricJSON))
 				if err != nil {
 					return req, err
 				}
