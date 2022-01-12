@@ -87,6 +87,7 @@ func (receiver MetricsServer) Value() http.HandlerFunc {
 			m.Value = &g.Value
 
 		default:
+			fmt.Printf("Not found metric %+v", m)
 			http.NotFound(writer, request)
 			return
 
@@ -100,7 +101,6 @@ func (receiver MetricsServer) Value() http.HandlerFunc {
 
 		writer.Header().Add("Content-Type", "application/json")
 		writer.Write(out)
-		return
 	}
 }
 

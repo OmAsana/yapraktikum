@@ -361,7 +361,7 @@ func TestMetricsServer_Value(t *testing.T) {
 "delta": 22
 }`,
 			header:   "application/json",
-			wantCode: http.StatusOK,
+			wantCode: http.StatusNotFound,
 		},
 		{
 			name: "valid gauge",
@@ -371,7 +371,7 @@ func TestMetricsServer_Value(t *testing.T) {
 "value": 1.02
 }`,
 			header:   "application/json",
-			wantCode: http.StatusOK,
+			wantCode: http.StatusNotFound,
 		},
 	}
 	for _, tt := range tests {
