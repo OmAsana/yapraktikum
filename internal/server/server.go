@@ -37,13 +37,17 @@ func NewMetricsServer(db MetricsRepository) *MetricsServer {
 	srv.Post("/value/", srv.Value())
 
 	srv.Route("/update", func(r chi.Router) {
+		r.Post("/", srv.Update())
 		r.Route("/counter/", func(r chi.Router) {
 			r.Post("/{counterName}/{counterValue}", srv.UpdateCounters())
 		})
 		r.Route("/gauge/", func(r chi.Router) {
 			r.Post("/{gaugeName}/{gaugeValue}", srv.UpdateGauge())
 		})
-		r.Post("/", srv.Update())
+		r.Post("/*", func(writer http.ResponseWriter, request *http.Request) {
+			http.Error(writer, "not implemented", http.StatusNotImplemented)
+
+		})
 
 	})
 
@@ -67,7 +71,7 @@ func (receiver MetricsServer) Value() http.HandlerFunc {
 		case "counter":
 			c, err := receiver.db.RetrieveCounter(m.ID)
 			if err != nil {
-				http.Error(writer, err.Error(), http.StatusBadRequest)
+				http.Error(writer, err.Error(), http.StatusNotFound)
 				return
 			}
 
@@ -84,7 +88,7 @@ func (receiver MetricsServer) Value() http.HandlerFunc {
 		case "gauge":
 			g, err := receiver.db.RetrieveGauge(m.ID)
 			if err != nil {
-				http.Error(writer, err.Error(), http.StatusBadRequest)
+				http.Error(writer, err.Error(), http.StatusNotFound)
 				return
 			}
 
@@ -98,6 +102,10 @@ func (receiver MetricsServer) Value() http.HandlerFunc {
 
 			writer.Write(out)
 			return
+		default:
+			http.NotFound(writer, request)
+			return
+
 		}
 
 	}

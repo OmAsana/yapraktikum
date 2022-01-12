@@ -85,6 +85,10 @@ func TestMetricsServer_UpdateCounters(t *testing.T) {
 				wantStatus: http.StatusNotImplemented,
 			},
 			{
+				uri:        "/update/unknown",
+				wantStatus: http.StatusNotImplemented,
+			},
+			{
 				uri:        "/update/counter/a",
 				wantStatus: http.StatusNotFound,
 			},
