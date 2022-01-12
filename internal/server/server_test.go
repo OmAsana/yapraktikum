@@ -340,6 +340,60 @@ func TestGetMetric(t *testing.T) {
 
 }
 
+func TestMetricsServer_Value(t *testing.T) {
+	type params struct {
+		name          string
+		rawMetricJSON string
+		header        string
+		wantCode      int
+	}
+
+	tests := []params{
+		{
+			name: "valid counter",
+			rawMetricJSON: `{
+"id": "counter1",
+"type": "counter",
+"delta": 22
+}`,
+			header:   "application/json",
+			wantCode: http.StatusOK,
+		},
+		{
+			name: "valid gauge",
+			rawMetricJSON: `{
+"id": "gauge1",
+"type": "gauge",
+"value": 1.02
+}`,
+			header:   "application/json",
+			wantCode: http.StatusOK,
+		},
+	}
+	for _, tt := range tests {
+
+		t.Run(tt.name, func(t *testing.T) {
+			srv := NewMetricsServer(SetupRepo(t))
+			ts := httptest.NewServer(srv)
+			defer ts.Close()
+			resp, body := executeTestRequest(t, ts, func() (*http.Request, error) {
+				req, err := http.NewRequest(http.MethodPost, ts.URL+"/value/", strings.NewReader(tt.rawMetricJSON))
+				if err != nil {
+					return req, err
+				}
+
+				req.Header.Set("Accept", tt.header)
+				return req, err
+			})
+			defer resp.Body.Close()
+
+			require.Equal(t, tt.wantCode, resp.StatusCode, body)
+		})
+
+	}
+
+}
+
 func TestMetricsServer_Update(t *testing.T) {
 	type params struct {
 		name          string

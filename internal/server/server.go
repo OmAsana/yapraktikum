@@ -34,7 +34,7 @@ func NewMetricsServer(db MetricsRepository) *MetricsServer {
 	srv.Get("/", srv.ReturnCurrentMetrics())
 	srv.Get("/value/{metricType}/{metricName}", srv.GetMetric())
 
-	srv.Post("/value", srv.Value())
+	srv.Post("/value/", srv.Value())
 
 	srv.Route("/update", func(r chi.Router) {
 		r.Route("/counter/", func(r chi.Router) {
@@ -68,9 +68,27 @@ func (receiver MetricsServer) Value() http.HandlerFunc {
 			c, err := receiver.db.RetrieveCounter(m.ID)
 			if err != nil {
 				http.Error(writer, err.Error(), http.StatusBadRequest)
+				return
 			}
 
 			m.Delta = &c.Value
+
+			out, err := json.Marshal(m)
+			if err != nil {
+				http.Error(writer, err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			writer.Write(out)
+			return
+		case "gauge":
+			g, err := receiver.db.RetrieveGauge(m.ID)
+			if err != nil {
+				http.Error(writer, err.Error(), http.StatusBadRequest)
+				return
+			}
+
+			m.Value = &g.Value
 
 			out, err := json.Marshal(m)
 			if err != nil {
