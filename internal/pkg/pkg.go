@@ -32,3 +32,11 @@ func Contains(list []string, value string) bool {
 
 	return false
 }
+
+func PointerFloat(f float64) *float64 {
+	return &f
+}
+
+func PointerInt(i int64) *int64 {
+	return &i
+}

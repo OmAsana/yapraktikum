@@ -107,14 +107,13 @@ func (receiver MetricsServer) Value() http.HandlerFunc {
 
 func (receiver MetricsServer) Update() http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
-		if !pkg.Contains(request.Header.Values("accept"), "application/json") {
+		if !pkg.Contains(request.Header.Values("Content-Type"), "application/json") {
 			http.Error(writer, "not implemented", http.StatusNotImplemented)
 		}
 
 		var m handlers.Metrics
 		err := json.NewDecoder(request.Body).Decode(&m)
 		if err != nil {
-			fmt.Println(err)
 			http.Error(writer, err.Error(), http.StatusBadRequest)
 			return
 		}
