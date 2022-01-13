@@ -188,6 +188,12 @@ func (a Agent) reportAPIv2() {
 
 	}
 
+	metricStream <- handlers.Metrics{
+		ID:    a.registry.PollCounter.Name,
+		MType: "counter",
+		Delta: &a.registry.PollCounter.Value,
+	}
+
 	close(metricStream)
 
 }
