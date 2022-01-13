@@ -490,7 +490,7 @@ func TestMetricsServer_Update(t *testing.T) {
 					return req, err
 				}
 
-				req.Header.Set("Accept", tt.header)
+				req.Header.Set("Content-Type", tt.header)
 				return req, err
 			})
 			defer resp.Body.Close()
