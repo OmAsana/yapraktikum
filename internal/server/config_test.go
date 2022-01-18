@@ -14,7 +14,7 @@ func TestServerInitConfig(t *testing.T) {
 		cfg, err := InitConfig()
 
 		require.NoError(t, err)
-		assert.Equal(t, cfg.Address, "127.0.0.1:8080")
+		assert.Equal(t, cfg.Address, "localhost:8080")
 	})
 
 	t.Run("check overrides", func(t *testing.T) {
