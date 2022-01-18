@@ -11,15 +11,19 @@ import (
 	"github.com/OmAsana/yapraktikum/internal/server"
 )
 
-func startHTTPServer(wg *sync.WaitGroup, handler http.Handler) *http.Server {
-	srv := &http.Server{Addr: "127.0.0.1:8080", Handler: handler}
+func startHTTPServer(wg *sync.WaitGroup, handler http.Handler) (*http.Server, error) {
+	cfg, err := server.InitConfig()
+	if err != nil {
+		return nil, err
+	}
+	srv := &http.Server{Addr: cfg.Address, Handler: handler}
 	go func() {
 		defer wg.Done()
 		if err := srv.ListenAndServe(); err != http.ErrServerClosed {
 			fmt.Println("Server shut down with err: ", err)
 		}
 	}()
-	return srv
+	return srv, nil
 
 }
 
@@ -33,7 +37,11 @@ func main() {
 	waitServerShutdown := &sync.WaitGroup{}
 
 	waitServerShutdown.Add(1)
-	httpServer := startHTTPServer(waitServerShutdown, metricsServer)
+	httpServer, err := startHTTPServer(waitServerShutdown, metricsServer)
+
+	if err != nil {
+		panic(err)
+	}
 
 	go func() {
 		<-ctx.Done()
