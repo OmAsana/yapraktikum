@@ -3,6 +3,8 @@ package pkg
 import (
 	"math"
 	"net/http"
+	"os"
+	"testing"
 )
 
 func CheckRequestMethod(next http.Handler, method string) http.Handler {
@@ -39,4 +41,21 @@ func PointerFloat(f float64) *float64 {
 
 func PointerInt(i int64) *int64 {
 	return &i
+}
+
+type UnsetFunc func()
+
+func SetEnv(t *testing.T, key, value string) (UnsetFunc, error) {
+	t.Helper()
+
+	err := os.Setenv(key, value)
+	if err != nil {
+		return nil, err
+	}
+
+	return func() {
+		_ = os.Unsetenv(key)
+
+	}, nil
+
 }

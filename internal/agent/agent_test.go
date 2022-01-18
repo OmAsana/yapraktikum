@@ -123,9 +123,9 @@ func TestNewAgentWithOptions(t *testing.T) {
 		newAddress := "127.0.0.1:1234"
 		newPollInterval := int64(2)
 		newReportInterval := int64(5)
-		setEnv(t, "ADDRESS", newAddress)
-		setEnv(t, "POLL_INTERVAL", fmt.Sprintf("%d", newPollInterval))
-		setEnv(t, "REPORT_INTERVAL", fmt.Sprintf("%d", newReportInterval))
+		pkg.SetEnv(t, "ADDRESS", newAddress)
+		pkg.SetEnv(t, "POLL_INTERVAL", fmt.Sprintf("%d", newPollInterval))
+		pkg.SetEnv(t, "REPORT_INTERVAL", fmt.Sprintf("%d", newReportInterval))
 
 		cfg, err := InitConfig()
 		assert.NoError(t, err)
