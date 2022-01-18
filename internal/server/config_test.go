@@ -9,7 +9,7 @@ import (
 	"github.com/OmAsana/yapraktikum/internal/pkg"
 )
 
-func TestInitConfig(t *testing.T) {
+func TestServerInitConfig(t *testing.T) {
 	t.Run("check default", func(t *testing.T) {
 		cfg, err := InitConfig()
 

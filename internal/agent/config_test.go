@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"os"
 	"strconv"
 	"testing"
 
@@ -10,8 +11,11 @@ import (
 	"github.com/OmAsana/yapraktikum/internal/pkg"
 )
 
-func TestInitConfig(t *testing.T) {
+func TestAgentInitConfig(t *testing.T) {
 	t.Run("check default", func(t *testing.T) {
+		os.Unsetenv("ADDRESS")
+		os.Unsetenv("POLL_INTERVAL")
+		os.Unsetenv("REPORT_INTERVAL")
 		cfg, err := InitConfig()
 
 		require.NoError(t, err)
@@ -24,9 +28,14 @@ func TestInitConfig(t *testing.T) {
 		newAddress := "127.0.0.1:1234"
 		newPollInterval := int64(2)
 		newReportInterval := int64(5)
-		pkg.SetEnv(t, "ADDRESS", newAddress)
-		pkg.SetEnv(t, "POLL_INTERVAL", strconv.FormatInt(newPollInterval, 10))
-		pkg.SetEnv(t, "REPORT_INTERVAL", strconv.FormatInt(newReportInterval, 10))
+		unsetAdd, _ := pkg.SetEnv(t, "ADDRESS", newAddress)
+		unsetPoll, _ := pkg.SetEnv(t, "POLL_INTERVAL", strconv.FormatInt(newPollInterval, 10))
+		unsetRerport, _ := pkg.SetEnv(t, "REPORT_INTERVAL", strconv.FormatInt(newReportInterval, 10))
+		defer func() {
+			unsetRerport()
+			unsetPoll()
+			unsetAdd()
+		}()
 
 		cfg, err := InitConfig()
 		require.NoError(t, err)
