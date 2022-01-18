@@ -13,6 +13,7 @@ import (
 
 func startHTTPServer(wg *sync.WaitGroup, handler http.Handler) (*http.Server, error) {
 	cfg, err := server.InitConfig()
+	fmt.Printf("%+v\n", cfg)
 	if err != nil {
 		return nil, err
 	}
