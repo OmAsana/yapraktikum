@@ -17,25 +17,22 @@ import (
 
 var defaultBaseURL *url.URL
 
-func init() {
-	defaultBaseURL, _ = url.Parse("http://127.0.0.1:8080")
-}
-
-type Config struct {
+type config struct {
 	PollInterval   time.Duration
 	ReportInterval time.Duration
 	BaseURL        *url.URL
 }
 type Agent struct {
 	registry   *metrics.Registry
-	cfg        Config
+	cfg        config
 	httpClient *http.Client
 }
 
 func NewDefaultAgent() *Agent {
+	defaultBaseURL, _ = url.Parse("http://127.0.0.1:8080")
 	return &Agent{registry: metrics.NewRegistry(),
 		httpClient: &http.Client{},
-		cfg: Config{
+		cfg: config{
 			PollInterval:   time.Second * 2,
 			ReportInterval: time.Second * 10,
 			BaseURL:        defaultBaseURL,
@@ -48,7 +45,30 @@ func NewAgentWithBaseURL(baseURL *url.URL) *Agent {
 	return agent
 }
 
+func NewAgentWithOptions(opts ...AgentOption) (*Agent, error) {
+	agent := NewDefaultAgent()
+
+	for _, opt := range opts {
+		err := opt(agent)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return agent, nil
+}
+
+func (a *Agent) logState() {
+	fmt.Printf(
+		"Agent started. PollInterval: %.2fs, ReportInterval: %.2fs, Report to address: %q",
+		a.cfg.PollInterval.Seconds(),
+		a.cfg.ReportInterval.Seconds(),
+		a.cfg.BaseURL.String(),
+	)
+}
 func (a *Agent) Server(ctx context.Context) {
+	a.logState()
+
 	pollTicker := time.NewTicker(a.cfg.PollInterval)
 	reportTicker := time.NewTicker(a.cfg.ReportInterval)
 	for {

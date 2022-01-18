@@ -4,11 +4,14 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"testing"
+	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/OmAsana/yapraktikum/internal/handlers"
@@ -112,5 +115,28 @@ func TestNewAgent(t *testing.T) {
 			require.NoError(t, err)
 		})
 
+	})
+}
+
+func TestNewAgentWithOptions(t *testing.T) {
+	t.Run("check options are applied", func(t *testing.T) {
+		newAddress := "127.0.0.1:1234"
+		newPollInterval := int64(2)
+		newReportInterval := int64(5)
+		setEnv(t, "ADDRESS", newAddress)
+		setEnv(t, "POLL_INTERVAL", fmt.Sprintf("%d", newPollInterval))
+		setEnv(t, "REPORT_INTERVAL", fmt.Sprintf("%d", newReportInterval))
+
+		cfg, err := InitConfig()
+		assert.NoError(t, err)
+
+		agent, err := NewAgentWithOptions(WithAddress(cfg.Address),
+			WithPollInterval(cfg.PollInterval), WithReportInterval(cfg.ReportInterval))
+
+		require.NoError(t, err)
+
+		assert.Equal(t, agent.cfg.BaseURL.String(), "http://"+newAddress)
+		assert.Equal(t, agent.cfg.PollInterval, time.Duration(newPollInterval)*time.Second)
+		assert.Equal(t, agent.cfg.ReportInterval, time.Duration(newReportInterval)*time.Second)
 	})
 }
