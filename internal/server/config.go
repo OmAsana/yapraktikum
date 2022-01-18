@@ -5,7 +5,7 @@ import (
 )
 
 type Config struct {
-	Address string `env:"ADDRESS" envDefault:"127.0.0.1:8080"`
+	Address string `env:"ADDRESS" envDefault:"localhost:8080"`
 }
 
 func InitConfig() (*Config, error) {
