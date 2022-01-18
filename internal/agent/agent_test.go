@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -121,11 +120,11 @@ func TestNewAgent(t *testing.T) {
 func TestNewAgentWithOptions(t *testing.T) {
 	t.Run("check options are applied", func(t *testing.T) {
 		newAddress := "127.0.0.1:1234"
-		newPollInterval := int64(2)
-		newReportInterval := int64(5)
+		newPollInterval := "2s"
+		newReportInterval := "5s"
 		pkg.SetEnv(t, "ADDRESS", newAddress)
-		pkg.SetEnv(t, "POLL_INTERVAL", fmt.Sprintf("%d", newPollInterval))
-		pkg.SetEnv(t, "REPORT_INTERVAL", fmt.Sprintf("%d", newReportInterval))
+		pkg.SetEnv(t, "POLL_INTERVAL", newPollInterval)
+		pkg.SetEnv(t, "REPORT_INTERVAL", newReportInterval)
 
 		cfg, err := InitConfig()
 		assert.NoError(t, err)
@@ -136,7 +135,13 @@ func TestNewAgentWithOptions(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.Equal(t, agent.cfg.BaseURL.String(), "http://"+newAddress)
-		assert.Equal(t, agent.cfg.PollInterval, time.Duration(newPollInterval)*time.Second)
-		assert.Equal(t, agent.cfg.ReportInterval, time.Duration(newReportInterval)*time.Second)
+		assert.Equal(t, agent.cfg.PollInterval, func() interface{} {
+			t, _ := time.ParseDuration(newPollInterval)
+			return t
+		}())
+		assert.Equal(t, agent.cfg.ReportInterval, func() interface{} {
+			t, _ := time.ParseDuration(newReportInterval)
+			return t
+		}())
 	})
 }

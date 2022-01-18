@@ -24,16 +24,16 @@ func WithAddress(address string) AgentOption {
 	}
 }
 
-func WithReportInterval(seconds int64) AgentOption {
+func WithReportInterval(t time.Duration) AgentOption {
 	return func(agent *Agent) error {
-		agent.cfg.ReportInterval = time.Second * time.Duration(seconds)
+		agent.cfg.ReportInterval = t
 		return nil
 	}
 }
 
-func WithPollInterval(seconds int64) AgentOption {
+func WithPollInterval(t time.Duration) AgentOption {
 	return func(agent *Agent) error {
-		agent.cfg.PollInterval = time.Second * time.Duration(seconds)
+		agent.cfg.PollInterval = t
 		return nil
 	}
 }
