@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -18,14 +19,68 @@ import (
 
 type MetricsServer struct {
 	*chi.Mux
-	db MetricsRepository
+	db            MetricsRepository
+	storeInterval time.Duration
+	storeFile     string
+	restore       bool
+	cacherReader  *cacherReader
+	cacherWriter  Cacher
 }
 
-func NewMetricsServer(db MetricsRepository) *MetricsServer {
-	srv := &MetricsServer{
-		db:  db,
-		Mux: chi.NewMux()}
+type ServerOpts func(server *MetricsServer)
 
+func WithStoreFile(file string) ServerOpts {
+	return func(server *MetricsServer) {
+		server.storeFile = file
+	}
+}
+
+func WithStoreInterval(interval time.Duration) ServerOpts {
+	return func(server *MetricsServer) {
+		server.storeInterval = interval
+	}
+}
+
+func WithRestore(restore bool) ServerOpts {
+	return func(server *MetricsServer) {
+		server.restore = restore
+	}
+}
+
+func NewMetricsServer(db MetricsRepository, opts ...ServerOpts) (*MetricsServer, error) {
+	srv := &MetricsServer{
+		db:            db,
+		Mux:           chi.NewMux(),
+		storeInterval: 5 * time.Second,
+		storeFile:     "/tmp/devops-metrics-db.json",
+		restore:       true,
+	}
+
+	for _, opt := range opts {
+		opt(srv)
+	}
+
+	if srv.storeFile != "" {
+		if srv.restore {
+			srv.restoreData()
+		}
+
+		cacheWriter, err := NewCacherWriter(srv.storeFile)
+		if err != nil {
+			return nil, err
+		}
+		srv.cacherWriter = cacheWriter
+	} else {
+		srv.cacherWriter = NewNoopCacher()
+	}
+
+	srv.periodicDataWriter()
+	setupRoutes(srv)
+
+	return srv, nil
+}
+
+func setupRoutes(srv *MetricsServer) {
 	srv.Use(middleware.RequestID)
 	srv.Use(middleware.RealIP)
 	srv.Use(middleware.Logger)
@@ -50,8 +105,6 @@ func NewMetricsServer(db MetricsRepository) *MetricsServer {
 		})
 
 	})
-
-	return srv
 }
 
 func (receiver MetricsServer) Value() http.HandlerFunc {
@@ -140,6 +193,7 @@ func (receiver MetricsServer) saveMetric(writer http.ResponseWriter, m handlers.
 			http.Error(writer, "internal error", http.StatusInternalServerError)
 			return
 		}
+		receiver.writeMetricToFile(&m)
 		writer.WriteHeader(http.StatusOK)
 		return
 	case "gauge":
@@ -158,6 +212,7 @@ func (receiver MetricsServer) saveMetric(writer http.ResponseWriter, m handlers.
 			http.Error(writer, "internal error", http.StatusInternalServerError)
 			return
 		}
+		receiver.writeMetricToFile(&m)
 		writer.WriteHeader(http.StatusOK)
 		return
 	default:
@@ -291,4 +346,110 @@ func (receiver MetricsServer) ReturnCurrentMetrics() http.HandlerFunc {
 		sb.Reset()
 		writer.WriteHeader(http.StatusOK)
 	}
+}
+
+func (receiver MetricsServer) restoreData() error {
+	reader, err := NewCacherReader(receiver.storeFile)
+	if err != nil {
+		return err
+	}
+	for {
+		m, err := reader.ReadMetricsFromCache()
+		if err != nil && err != io.EOF {
+			return err
+		}
+		if err == io.EOF {
+			break
+		}
+
+		defer func() {
+			//if err := recover(); err != nil {
+			//	fmt.Printf("%+v\n", m)
+			//}
+		}()
+		switch m.MType {
+		case "counter":
+
+			c := metrics.Counter{
+				Name:  m.ID,
+				Value: *m.Delta,
+			}
+
+			err := receiver.db.StoreCounter(c)
+			if err != nil {
+				return err
+			}
+		case "gauge":
+
+			g := metrics.Gauge{
+				Name:  m.ID,
+				Value: *m.Value,
+			}
+			err := receiver.db.StoreGauge(g)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (receiver MetricsServer) writeMetricToFile(m *handlers.Metrics) {
+	if receiver.storeInterval > 0 {
+		return
+	}
+
+	err := receiver.cacherWriter.WriteMetric(m)
+	if err != nil {
+		fmt.Println(err)
+	}
+}
+
+func (receiver MetricsServer) periodicDataWriter() {
+	if receiver.storeInterval > 0 {
+		go func() {
+			ticker := time.NewTicker(receiver.storeInterval)
+			for {
+				select {
+				case <-ticker.C:
+					gauges, couters, err := receiver.db.ListStoredMetrics()
+					if err != nil {
+						fmt.Println(err)
+					}
+					for _, g := range gauges {
+						m := &handlers.Metrics{
+							ID:    g.Name,
+							MType: "gauge",
+							Delta: nil,
+							Value: &g.Value,
+						}
+
+						err := receiver.cacherWriter.WriteMetric(m)
+						if err != nil {
+							fmt.Println(err)
+						}
+					}
+
+					for _, c := range couters {
+						m := &handlers.Metrics{
+							ID:    c.Name,
+							MType: "counter",
+							Delta: &c.Value,
+							Value: nil,
+						}
+
+						err := receiver.cacherWriter.WriteMetric(m)
+						if err != nil {
+							fmt.Println(err)
+						}
+
+					}
+
+				}
+			}
+
+		}()
+
+	}
+
 }

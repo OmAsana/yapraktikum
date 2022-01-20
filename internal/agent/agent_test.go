@@ -32,7 +32,8 @@ func SetupRepo(t *testing.T) server.MetricsRepository {
 }
 
 func TestNewAgent(t *testing.T) {
-	handler := server.NewMetricsServer(SetupRepo(t))
+	handler, err := server.NewMetricsServer(SetupRepo(t))
+	assert.NoError(t, err)
 	metricServer := httptest.NewServer(handler)
 	baseURL, _ := url.Parse(metricServer.URL)
 	agent := NewAgentWithBaseURL(baseURL)

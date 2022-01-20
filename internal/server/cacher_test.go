@@ -64,10 +64,6 @@ func TestNewCacher(t *testing.T) {
 		metrics = append(metrics, m)
 	}
 
-	for _, m := range metrics {
-		fmt.Println(m)
-	}
-
 	for k, v := range data {
 		assert.ObjectsAreEqualValues(v, metrics[k])
 	}

@@ -11,9 +11,20 @@ import (
 	"github.com/OmAsana/yapraktikum/internal/server"
 )
 
-func startHTTPServer(wg *sync.WaitGroup, handler http.Handler) (*http.Server, error) {
+func startHTTPServer(wg *sync.WaitGroup) (*http.Server, error) {
+
 	cfg, err := server.InitConfig()
-	fmt.Printf("%+v\n", cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	repo := server.NewRepositoryMock()
+	handler, err := server.NewMetricsServer(
+		repo,
+		server.WithRestore(cfg.Restore),
+		server.WithStoreFile(cfg.StoreFile),
+		server.WithStoreInterval(cfg.StoreInterval),
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -32,13 +43,10 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT)
 	defer stop()
 
-	repo := server.NewRepositoryMock()
-	metricsServer := server.NewMetricsServer(repo)
-
 	waitServerShutdown := &sync.WaitGroup{}
 
 	waitServerShutdown.Add(1)
-	httpServer, err := startHTTPServer(waitServerShutdown, metricsServer)
+	httpServer, err := startHTTPServer(waitServerShutdown)
 
 	if err != nil {
 		panic(err)

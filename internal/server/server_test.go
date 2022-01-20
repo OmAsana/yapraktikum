@@ -57,7 +57,8 @@ func executeTestRequest(t *testing.T, ts *httptest.Server, reqFunc func() (*http
 }
 
 func TestServer(t *testing.T) {
-	srv := NewMetricsServer(SetupRepo(t))
+	srv, err := NewMetricsServer(SetupRepo(t))
+	assert.NoError(t, err)
 	ts := httptest.NewServer(srv)
 	defer ts.Close()
 
@@ -100,7 +101,8 @@ func TestMetricsServer_UpdateCounters(t *testing.T) {
 
 		for _, test := range tests {
 			t.Run(test.uri, func(t *testing.T) {
-				srv := NewMetricsServer(SetupRepo(t))
+				srv, err := NewMetricsServer(SetupRepo(t))
+				assert.NoError(t, err)
 				ts := httptest.NewServer(srv)
 				defer ts.Close()
 				resp, body := testRequest(t, ts, http.MethodPost, test.uri, nil)
@@ -156,7 +158,8 @@ func TestMetricsServer_UpdateCounters(t *testing.T) {
 
 		for _, test := range tests {
 			t.Run(test.name, func(t *testing.T) {
-				srv := NewMetricsServer(SetupRepo(t))
+				srv, err := NewMetricsServer(SetupRepo(t))
+				assert.NoError(t, err)
 				ts := httptest.NewServer(srv)
 				defer ts.Close()
 				for _, counter := range test.inputCounters {
@@ -231,7 +234,8 @@ func TestMetricsServer_UpdateGauge(t *testing.T) {
 
 		for _, test := range tests {
 			t.Run(test.name, func(t *testing.T) {
-				srv := NewMetricsServer(SetupRepo(t))
+				srv, err := NewMetricsServer(SetupRepo(t))
+				assert.NoError(t, err)
 				ts := httptest.NewServer(srv)
 				defer ts.Close()
 				for _, g := range test.inputGauge {
@@ -280,7 +284,8 @@ func TestGetMetric(t *testing.T) {
 
 		for _, test := range tests {
 			t.Run(test.name, func(t *testing.T) {
-				srv := NewMetricsServer(SetupRepo(t))
+				srv, err := NewMetricsServer(SetupRepo(t))
+				assert.NoError(t, err)
 				ts := httptest.NewServer(srv)
 				defer ts.Close()
 				for _, val := range test.insertValues {
@@ -323,7 +328,8 @@ func TestGetMetric(t *testing.T) {
 
 		for _, test := range tests {
 			t.Run(test.name, func(t *testing.T) {
-				srv := NewMetricsServer(SetupRepo(t))
+				srv, err := NewMetricsServer(SetupRepo(t))
+				assert.NoError(t, err)
 				ts := httptest.NewServer(srv)
 				defer ts.Close()
 				for _, val := range test.insertValues {
@@ -377,7 +383,8 @@ func TestMetricsServer_Value(t *testing.T) {
 	for _, tt := range tests {
 
 		t.Run(tt.name, func(t *testing.T) {
-			srv := NewMetricsServer(SetupRepo(t))
+			srv, err := NewMetricsServer(SetupRepo(t))
+			assert.NoError(t, err)
 			ts := httptest.NewServer(srv)
 			defer ts.Close()
 			resp, body := executeTestRequest(t, ts, func() (*http.Request, error) {
@@ -481,7 +488,8 @@ func TestMetricsServer_Update(t *testing.T) {
 	for _, tt := range tests {
 
 		t.Run(tt.name, func(t *testing.T) {
-			srv := NewMetricsServer(SetupRepo(t))
+			srv, err := NewMetricsServer(SetupRepo(t))
+			assert.NoError(t, err)
 			ts := httptest.NewServer(srv)
 			defer ts.Close()
 			resp, body := executeTestRequest(t, ts, func() (*http.Request, error) {
