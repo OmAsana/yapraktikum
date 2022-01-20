@@ -33,6 +33,7 @@ func startHTTPServer(wg *sync.WaitGroup) (*http.Server, error) {
 		defer wg.Done()
 		if err := srv.ListenAndServe(); err != http.ErrServerClosed {
 			fmt.Println("Server shut down with err: ", err)
+			handler.FlushToDisk()
 		}
 	}()
 	return srv, nil
