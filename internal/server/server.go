@@ -409,43 +409,40 @@ func (receiver MetricsServer) periodicDataWriter() {
 	if receiver.storeInterval > 0 {
 		go func() {
 			ticker := time.NewTicker(receiver.storeInterval)
-			for {
-				select {
-				case <-ticker.C:
-					gauges, couters, err := receiver.db.ListStoredMetrics()
+			for range ticker.C {
+				gauges, couters, err := receiver.db.ListStoredMetrics()
+				if err != nil {
+					fmt.Println(err)
+				}
+				for _, g := range gauges {
+					m := &handlers.Metrics{
+						ID:    g.Name,
+						MType: "gauge",
+						Delta: nil,
+						Value: &g.Value,
+					}
+
+					err := receiver.cacherWriter.WriteMetric(m)
 					if err != nil {
 						fmt.Println(err)
 					}
-					for _, g := range gauges {
-						m := &handlers.Metrics{
-							ID:    g.Name,
-							MType: "gauge",
-							Delta: nil,
-							Value: &g.Value,
-						}
+				}
 
-						err := receiver.cacherWriter.WriteMetric(m)
-						if err != nil {
-							fmt.Println(err)
-						}
+				for _, c := range couters {
+					m := &handlers.Metrics{
+						ID:    c.Name,
+						MType: "counter",
+						Delta: &c.Value,
+						Value: nil,
 					}
 
-					for _, c := range couters {
-						m := &handlers.Metrics{
-							ID:    c.Name,
-							MType: "counter",
-							Delta: &c.Value,
-							Value: nil,
-						}
-
-						err := receiver.cacherWriter.WriteMetric(m)
-						if err != nil {
-							fmt.Println(err)
-						}
-
+					err := receiver.cacherWriter.WriteMetric(m)
+					if err != nil {
+						fmt.Println(err)
 					}
 
 				}
+
 			}
 
 		}()
