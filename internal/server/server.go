@@ -117,52 +117,53 @@ func (receiver MetricsServer) Update() http.HandlerFunc {
 			http.Error(writer, err.Error(), http.StatusBadRequest)
 			return
 		}
-
-		switch m.MType {
-		case "counter":
-			if m.Delta == nil {
-				http.Error(writer, "delta can not be nil", http.StatusBadRequest)
-				return
-			}
-
-			c := metrics.Counter{
-				Name:  m.ID,
-				Value: *m.Delta,
-			}
-
-			err := receiver.db.StoreCounter(c)
-			if err != nil {
-				http.Error(writer, "internal error", http.StatusInternalServerError)
-				return
-			}
-			writer.WriteHeader(http.StatusOK)
-			return
-		case "gauge":
-			if m.Value == nil {
-				http.Error(writer, "value can not be nil", http.StatusBadRequest)
-				return
-			}
-
-			g := metrics.Gauge{
-				Name:  m.ID,
-				Value: *m.Value,
-			}
-
-			err := receiver.db.StoreGauge(g)
-			if err != nil {
-				http.Error(writer, "internal error", http.StatusInternalServerError)
-				return
-			}
-			writer.WriteHeader(http.StatusOK)
-			return
-		default:
-			http.Error(writer, "wrong metric type", http.StatusBadRequest)
-		}
-		//if m.Value || m.Delta
-		//	fmt.Println(m)
-
-		http.Error(writer, "not implemented", http.StatusNotImplemented)
+		receiver.saveMetric(writer, m)
 	}
+}
+
+func (receiver MetricsServer) saveMetric(writer http.ResponseWriter, m handlers.Metrics) {
+
+	switch m.MType {
+	case "counter":
+		if m.Delta == nil {
+			http.Error(writer, "delta can not be nil", http.StatusBadRequest)
+			return
+		}
+
+		c := metrics.Counter{
+			Name:  m.ID,
+			Value: *m.Delta,
+		}
+
+		err := receiver.db.StoreCounter(c)
+		if err != nil {
+			http.Error(writer, "internal error", http.StatusInternalServerError)
+			return
+		}
+		writer.WriteHeader(http.StatusOK)
+		return
+	case "gauge":
+		if m.Value == nil {
+			http.Error(writer, "value can not be nil", http.StatusBadRequest)
+			return
+		}
+
+		g := metrics.Gauge{
+			Name:  m.ID,
+			Value: *m.Value,
+		}
+
+		err := receiver.db.StoreGauge(g)
+		if err != nil {
+			http.Error(writer, "internal error", http.StatusInternalServerError)
+			return
+		}
+		writer.WriteHeader(http.StatusOK)
+		return
+	default:
+		http.Error(writer, "wrong metric type", http.StatusBadRequest)
+	}
+	http.Error(writer, "not implemented", http.StatusNotImplemented)
 }
 
 func (receiver MetricsServer) GetMetric() http.HandlerFunc {
@@ -223,19 +224,14 @@ func (receiver MetricsServer) UpdateGauge() http.HandlerFunc {
 			http.Error(writer, "float must be a number", http.StatusBadRequest)
 			return
 		}
-
-		err = receiver.db.StoreGauge(metrics.Gauge{
-			Name:  metricName,
-			Value: val,
-		})
-
-		if err != nil {
-			http.Error(writer, "internal error", http.StatusInternalServerError)
-			return
+		metric := handlers.Metrics{
+			ID:    metricName,
+			MType: "gauge",
+			Delta: nil,
+			Value: &val,
 		}
-		writer.WriteHeader(http.StatusOK)
+		receiver.saveMetric(writer, metric)
 	}
-
 }
 
 func (receiver MetricsServer) UpdateCounters() http.HandlerFunc {
@@ -249,17 +245,15 @@ func (receiver MetricsServer) UpdateCounters() http.HandlerFunc {
 			return
 		}
 
-		err = receiver.db.StoreCounter(metrics.Counter{
-			Name:  metricName,
-			Value: val,
-		})
-
-		if err != nil {
-			http.Error(writer, "internal error", http.StatusInternalServerError)
-			return
+		metric := handlers.Metrics{
+			ID:    metricName,
+			MType: "counter",
+			Delta: &val,
+			Value: nil,
 		}
-		writer.WriteHeader(http.StatusOK)
+		receiver.saveMetric(writer, metric)
 	}
+
 }
 
 func validateCounter(value string) (int64, error) {
