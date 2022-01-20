@@ -2,8 +2,10 @@ package server
 
 import (
 	"fmt"
+	"io"
 	"io/ioutil"
 	"math/rand"
+	"os"
 	"testing"
 	"time"
 
@@ -15,12 +17,12 @@ import (
 
 func TestNewCacher(t *testing.T) {
 	file, err := ioutil.TempFile("/tmp", "cacher_test_file")
-	//defer os.Remove(file.Name())
+	defer os.Remove(file.Name())
 	assert.NoError(t, err)
 	fmt.Println(file.Name())
 
-	repo := NewRepositoryMock()
-	cacher, err := NewCacher(file.Name(), repo)
+	cacher, err := NewCacherWriter(file.Name())
+	defer cacher.Close()
 	assert.NoError(t, err)
 
 	rand.Seed(time.Now().UnixNano())
@@ -40,12 +42,34 @@ func TestNewCacher(t *testing.T) {
 		},
 	}
 
-	err = cacher.WriteMetric(&data)
+	for _, m := range data {
+		err = cacher.WriteMetric(&m)
+		assert.NoError(t, err)
+	}
+
+	reader, err := NewCacherReader(file.Name())
+	defer reader.Close()
 	assert.NoError(t, err)
 
-	m, err := cacher.ReadMetricsFromCache()
-	assert.NoError(t, err)
+	metrics := []handlers.Metrics{}
 
-	fmt.Println(m)
+	for {
+		m, err := reader.ReadMetricsFromCache()
+		if err != nil && err != io.EOF {
+			assert.NoError(t, err)
+		}
+		if err == io.EOF {
+			break
+		}
+		metrics = append(metrics, m)
+	}
+
+	for _, m := range metrics {
+		fmt.Println(m)
+	}
+
+	for k, v := range data {
+		assert.ObjectsAreEqualValues(v, metrics[k])
+	}
 
 }
