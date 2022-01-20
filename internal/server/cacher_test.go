@@ -22,8 +22,8 @@ func TestNewCacher(t *testing.T) {
 	fmt.Println(file.Name())
 
 	cacher, err := NewCacherWriter(file.Name())
-	defer cacher.Close()
 	assert.NoError(t, err)
+	defer cacher.Close()
 
 	rand.Seed(time.Now().UnixNano())
 
@@ -48,8 +48,8 @@ func TestNewCacher(t *testing.T) {
 	}
 
 	reader, err := NewCacherReader(file.Name())
-	defer reader.Close()
 	assert.NoError(t, err)
+	defer reader.Close()
 
 	metrics := []handlers.Metrics{}
 
