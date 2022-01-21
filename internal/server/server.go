@@ -51,9 +51,9 @@ func NewMetricsServer(db MetricsRepository, opts ...ServerOpts) (*MetricsServer,
 	srv := &MetricsServer{
 		db:            db,
 		Mux:           chi.NewMux(),
-		storeInterval: 5 * time.Second,
-		storeFile:     "/tmp/devops-metrics-db.json",
-		restore:       true,
+		storeInterval: 0 * time.Second,
+		storeFile:     "0",
+		restore:       false,
 	}
 
 	for _, opt := range opts {
