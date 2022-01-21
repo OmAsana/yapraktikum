@@ -7,6 +7,8 @@ import (
 	"math"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"sort"
 	"strconv"
 	"strings"
 	"testing"
@@ -14,7 +16,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/OmAsana/yapraktikum/internal/handlers"
 	"github.com/OmAsana/yapraktikum/internal/metrics"
+	"github.com/OmAsana/yapraktikum/internal/pkg"
 )
 
 func SetupRepo(t *testing.T) MetricsRepository {
@@ -505,14 +509,75 @@ func TestMetricsServer_Update(t *testing.T) {
 
 			require.Equal(t, tt.wantCode, resp.StatusCode, body)
 		})
-		//for _, counter := range test.inputCounters {
-		//	defer resp.Body.Close()
-		//	require.Equal(t, test.wantStatus, resp.StatusCode, body)
-		//
-		//}	t.Run(tt.name, func(t *testing.T) {
-		//
-		//})
-
 	}
+}
+
+func TestFlushToDisk(t *testing.T) {
+	t.Run("graceful shutdown", func(t *testing.T) {
+		testRepo := SetupRepo(t)
+		file, err := ioutil.TempFile("/tmp", "cacher_test_file")
+		assert.NoError(t, err)
+		defer os.Remove(file.Name())
+
+		srvOne, err := NewMetricsServer(
+			testRepo,
+			WithStoreFile(file.Name()),
+			WithRestore(false),
+		)
+		assert.NoError(t, err)
+
+		data := []handlers.Metrics{
+			{
+				ID:    "couter1",
+				MType: "counter",
+				Delta: pkg.PointerInt(66),
+				Value: nil,
+			},
+			{
+				ID:    "gauge",
+				MType: "gauge",
+				Delta: nil,
+				Value: pkg.PointerFloat(124),
+			},
+		}
+
+		for _, m := range data {
+			srvOne.writeMetricToFile(&m)
+		}
+
+		srvOne.FlushToDisk()
+
+		_, err = NewMetricsServer(testRepo, WithStoreFile(file.Name()), WithRestore(true))
+		assert.NoError(t, err)
+
+		gauges, counter, err := testRepo.ListStoredMetrics()
+		assert.NoError(t, err)
+
+		metricsFromDisk := []handlers.Metrics{}
+
+		for _, g := range gauges {
+			handlerScheme := metrics.GaugeToHandlerScheme(g)
+			metricsFromDisk = append(metricsFromDisk, handlerScheme)
+		}
+
+		for _, c := range counter {
+			handlerScheme := metrics.CounterToHandlerScheme(c)
+			metricsFromDisk = append(metricsFromDisk, handlerScheme)
+
+		}
+
+		sort.SliceStable(data, func(i, j int) bool {
+			return data[i].ID < data[j].ID
+
+		})
+
+		sort.SliceStable(metricsFromDisk, func(i, j int) bool {
+			return metricsFromDisk[i].ID < metricsFromDisk[j].ID
+
+		})
+
+		assert.ObjectsAreEqualValues(data, metricsFromDisk)
+
+	})
 
 }
