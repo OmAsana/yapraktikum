@@ -11,6 +11,13 @@ import (
 	"github.com/OmAsana/yapraktikum/internal/pkg"
 )
 
+var defaultConfig = &Config{
+	Address:       DefaultAddress,
+	StoreInterval: DefaultStoreInterval,
+	StoreFile:     DefaultStoreFile,
+	Restore:       DefaultRestore,
+}
+
 func TestServerInitConfig(t *testing.T) {
 	defaults := Config{
 		Address:       "localhost:8080",
@@ -20,7 +27,7 @@ func TestServerInitConfig(t *testing.T) {
 	}
 
 	t.Run("check default", func(t *testing.T) {
-		cfg, err := InitConfig()
+		cfg, err := initEnvArgs(*defaultConfig)
 
 		require.NoError(t, err)
 		assert.Equal(t, cfg.Address, defaults.Address)
@@ -43,7 +50,7 @@ func TestServerInitConfig(t *testing.T) {
 			defer unset()
 		}
 
-		cfg, err := InitConfig()
+		cfg, err := initEnvArgs(*defaultConfig)
 		require.NoError(t, err)
 		assert.Equal(t, cfg.Address, overrides["ADDRESS"])
 		assert.Equal(t, cfg.StoreInterval, func() time.Duration {
@@ -63,6 +70,33 @@ func TestServerInitConfig(t *testing.T) {
 				return false
 			}
 		}())
+
+	})
+}
+
+func Test_initCmdFlags(t *testing.T) {
+	t.Run("test default args", func(t *testing.T) {
+		cfg := initCmdFlagsWithArgs([]string{})
+		assert.EqualValues(t, defaultConfig, cfg)
+
+	})
+
+	t.Run("test override", func(t *testing.T) {
+		cfg := initCmdFlagsWithArgs([]string{
+			"-a", "localhost:9090",
+			"-r=false",
+			"-i", "200s",
+			"-f", "/tmp/random_file",
+		})
+		fmt.Println(cfg)
+
+		targetCfg := Config{
+			Address:       "localhost:9090",
+			StoreInterval: 200 * time.Second,
+			StoreFile:     "/tmp/random_file",
+			Restore:       false,
+		}
+		assert.EqualValues(t, &targetCfg, cfg)
 
 	})
 }

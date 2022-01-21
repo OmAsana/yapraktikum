@@ -1,1 +1,1 @@
-[{"id":"gauge1","type":"gauge","value":1.02}]
+[{"id":"some_val","type":"counter","delta":1}]
