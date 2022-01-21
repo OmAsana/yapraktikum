@@ -410,17 +410,13 @@ func (receiver MetricsServer) periodicDataWriter() {
 		go func() {
 			ticker := time.NewTicker(receiver.storeInterval)
 			for range ticker.C {
-				receiver.funcName()
-
+				receiver.flushToDisk()
 			}
-
 		}()
-
 	}
-
 }
 
-func (receiver MetricsServer) funcName() {
+func (receiver MetricsServer) flushToDisk() {
 	gauges, couters, err := receiver.db.ListStoredMetrics()
 	if err != nil {
 		fmt.Println(err)
@@ -456,5 +452,5 @@ func (receiver MetricsServer) funcName() {
 }
 
 func (receiver MetricsServer) FlushToDisk() {
-	receiver.FlushToDisk()
+	receiver.flushToDisk()
 }
