@@ -1,6 +1,7 @@
 package server
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -514,13 +515,12 @@ func TestMetricsServer_Update(t *testing.T) {
 
 func TestFlushToDisk(t *testing.T) {
 	t.Run("graceful shutdown", func(t *testing.T) {
-		testRepo := SetupRepo(t)
 		file, err := ioutil.TempFile("/tmp", "cacher_test_file")
 		assert.NoError(t, err)
 		defer os.Remove(file.Name())
 
 		srvOne, err := NewMetricsServer(
-			testRepo,
+			SetupRepo(t),
 			WithStoreFile(file.Name()),
 			WithRestore(false),
 		)
@@ -537,23 +537,38 @@ func TestFlushToDisk(t *testing.T) {
 				ID:    "gauge",
 				MType: "gauge",
 				Delta: nil,
-				Value: pkg.PointerFloat(124),
+				Value: pkg.PointerFloat(124.1),
 			},
 		}
 
+		ts := httptest.NewServer(srvOne)
 		for _, m := range data {
-			srvOne.writeMetricToFile(&m)
+
+			d, err := json.Marshal(m)
+			assert.NoError(t, err)
+
+			resp, _ := executeTestRequest(t, ts, func() (*http.Request, error) {
+				req, err := http.NewRequest(http.MethodPost, ts.URL+"/update/", strings.NewReader(string(d)))
+				if err != nil {
+					return req, err
+				}
+
+				req.Header.Set("Content-Type", "application/json")
+				return req, err
+			})
+			defer resp.Body.Close()
 		}
 
 		srvOne.FlushToDisk()
 
-		_, err = NewMetricsServer(testRepo, WithStoreFile(file.Name()), WithRestore(true))
+		newRepo := SetupRepo(t)
+		_, err = NewMetricsServer(newRepo, WithStoreFile(file.Name()), WithRestore(true))
 		assert.NoError(t, err)
 
-		gauges, counter, err := testRepo.ListStoredMetrics()
+		gauges, counter, err := newRepo.ListStoredMetrics()
 		assert.NoError(t, err)
 
-		metricsFromDisk := []handlers.Metrics{}
+		var metricsFromDisk []handlers.Metrics
 
 		for _, g := range gauges {
 			handlerScheme := metrics.GaugeToHandlerScheme(g)
@@ -576,7 +591,9 @@ func TestFlushToDisk(t *testing.T) {
 
 		})
 
-		assert.ObjectsAreEqualValues(data, metricsFromDisk)
+		for k, v := range data {
+			assert.Equal(t, v, metricsFromDisk[k])
+		}
 
 	})
 

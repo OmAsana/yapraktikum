@@ -1,7 +1,6 @@
 package server
 
 import (
-	"fmt"
 	"io"
 	"io/ioutil"
 	"math/rand"
@@ -20,7 +19,6 @@ func TestNewCacher(t *testing.T) {
 		file, err := ioutil.TempFile("/tmp", "cacher_test_file")
 		defer os.Remove(file.Name())
 		assert.NoError(t, err)
-		fmt.Println(file.Name())
 
 		cacher, err := NewCacherWriter(file.Name())
 		assert.NoError(t, err)
@@ -43,26 +41,16 @@ func TestNewCacher(t *testing.T) {
 			},
 		}
 
-		for _, m := range data {
-			err = cacher.WriteSingleMetric(&m)
-			assert.NoError(t, err)
-		}
+		err = cacher.WriteMultipleMetrics(&data)
+		assert.NoError(t, err)
 
 		reader, err := NewCacherReader(file.Name())
 		assert.NoError(t, err)
 		defer reader.Close()
 
-		metrics := []handlers.Metrics{}
-
-		for {
-			m, err := reader.ReadMetricsFromCache()
-			if err != nil && err != io.EOF {
-				assert.NoError(t, err)
-			}
-			if err == io.EOF {
-				break
-			}
-			metrics = append(metrics, m)
+		metrics, err := reader.ReadMetricsFromCache()
+		if err != nil && err != io.EOF {
+			assert.NoError(t, err)
 		}
 
 		for k, v := range data {

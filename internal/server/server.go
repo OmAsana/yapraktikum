@@ -176,9 +176,6 @@ func (ms MetricsServer) Update() http.HandlerFunc {
 
 func (ms MetricsServer) saveMetric(writer http.ResponseWriter, m handlers.Metrics) {
 
-	if m.ID == "ID:GetSet44" {
-		fmt.Println(m)
-	}
 	switch m.MType {
 	case "counter":
 		if m.Delta == nil {
@@ -344,15 +341,16 @@ func (ms MetricsServer) restoreData() error {
 	if err != nil {
 		return err
 	}
-	for {
-		m, err := reader.ReadMetricsFromCache()
-		if err != nil && err != io.EOF {
-			return err
-		}
-		if err == io.EOF {
-			break
-		}
-
+	metricsFromDisk, err := reader.ReadMetricsFromCache()
+	if err != nil && err != io.EOF {
+		fmt.Println("restore data")
+		fmt.Println(err)
+		return err
+	}
+	if err == io.EOF {
+		return nil
+	}
+	for _, m := range metricsFromDisk {
 		switch m.MType {
 		case "counter":
 
@@ -377,7 +375,41 @@ func (ms MetricsServer) restoreData() error {
 			}
 		}
 	}
-	return reader.TrucateFile()
+	return nil
+	//for {
+	//	m, err := reader.ReadMetricsFromCache()
+	//	if err != nil && err != io.EOF {
+	//		return err
+	//	}
+	//	if err == io.EOF {
+	//		break
+	//	}
+	//
+	//	switch m.MType {
+	//	case "counter":
+	//
+	//		c := metrics.Counter{
+	//			Name:  m.ID,
+	//			Value: *m.Delta,
+	//		}
+	//
+	//		err := ms.db.StoreCounter(c)
+	//		if err != nil {
+	//			return err
+	//		}
+	//	case "gauge":
+	//
+	//		g := metrics.Gauge{
+	//			Name:  m.ID,
+	//			Value: *m.Value,
+	//		}
+	//		err := ms.db.StoreGauge(g)
+	//		if err != nil {
+	//			return err
+	//		}
+	//	}
+	//}
+	//return reader.TrucateFile()
 }
 
 func (ms MetricsServer) writeMetricToFile(m *handlers.Metrics) {
@@ -412,20 +444,12 @@ func (ms MetricsServer) flushToDisk() {
 		m := metrics.GaugeToHandlerScheme(g)
 		flushMetrics = append(flushMetrics, m)
 
-		//err := ms.cacherWriter.WriteSingleMetric(&m)
-		//if err != nil {
-		//	fmt.Println(err)
-		//}
 	}
 
 	for _, c := range couters {
 		m := metrics.CounterToHandlerScheme(c)
 		flushMetrics = append(flushMetrics, m)
 
-		//err := ms.cacherWriter.WriteSingleMetric(&m)
-		//if err != nil {
-		//	fmt.Println(err)
-		//}
 	}
 
 	err = ms.cacherWriter.WriteMultipleMetrics(&flushMetrics)

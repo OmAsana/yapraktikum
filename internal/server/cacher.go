@@ -37,7 +37,10 @@ func (c *cacherWriter) WriteSingleMetric(metrics *handlers.Metrics) error {
 }
 
 func (c cacherWriter) WriteMultipleMetrics(metrics *[]handlers.Metrics) error {
-	return c.encoder.Encode(&metrics)
+	os.Truncate(c.file.Name(), 0)
+	c.file.Seek(0, 0)
+	return c.encoder.Encode(metrics)
+	return nil
 }
 
 func (c *cacherWriter) Close() error {
@@ -66,14 +69,10 @@ func (c *cacherReader) Close() error {
 
 }
 
-func (c *cacherReader) ReadMetricsFromCache() (handlers.Metrics, error) {
-	var m handlers.Metrics
+func (c *cacherReader) ReadMetricsFromCache() ([]handlers.Metrics, error) {
+	var m []handlers.Metrics
 	err := c.decoder.Decode(&m)
-	if err != nil {
-		return m, err
-	}
-	return m, nil
-
+	return m, err
 }
 
 func (c *cacherReader) TrucateFile() error {
