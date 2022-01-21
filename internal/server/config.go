@@ -23,19 +23,6 @@ type Config struct {
 	Restore       bool          `env:"RESTORE"`
 }
 
-//func InitConfig() (*Config, error) {
-//	cfg := Config{
-//		Address:       DefaultAddress,
-//		StoreFile:     DefaultStoreFile,
-//		StoreInterval: DefaultStoreInterval,
-//		Restore:       DefaultRestore,
-//	}
-//	if err := env.Parse(&cfg); err != nil {
-//		return nil, err
-//	}
-//	return &cfg, nil
-//}
-
 func InitConfig() (*Config, error) {
 	cfg := initCmdFlags()
 	return initEnvArgs(*cfg)

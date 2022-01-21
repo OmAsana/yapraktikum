@@ -16,7 +16,6 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	//a := agent.NewDefaultAgent()
 	a, err := agent.NewAgentWithOptions(
 		agent.WithAddress(cfg.Address),
 		agent.WithPollInterval(cfg.PollInterval),
