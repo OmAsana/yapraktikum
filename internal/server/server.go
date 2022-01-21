@@ -374,7 +374,7 @@ func (ms MetricsServer) restoreData() error {
 			}
 		}
 	}
-	return nil
+	return reader.TrucateFile()
 }
 
 func (ms MetricsServer) writeMetricToFile(m *handlers.Metrics) {

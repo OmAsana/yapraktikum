@@ -36,7 +36,6 @@ func (c *cacherWriter) WriteMetric(metrics *handlers.Metrics) error {
 }
 func (c *cacherWriter) Close() error {
 	return c.file.Close()
-
 }
 
 type cacherReader struct {
@@ -69,6 +68,10 @@ func (c *cacherReader) ReadMetricsFromCache() (handlers.Metrics, error) {
 	}
 	return m, nil
 
+}
+
+func (c *cacherReader) TrucateFile() error {
+	return os.Truncate(c.file.Name(), 0)
 }
 
 var _ Cacher = (*noopCacher)(nil)
