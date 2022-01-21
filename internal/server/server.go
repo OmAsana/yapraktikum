@@ -176,6 +176,9 @@ func (ms MetricsServer) Update() http.HandlerFunc {
 
 func (ms MetricsServer) saveMetric(writer http.ResponseWriter, m handlers.Metrics) {
 
+	if m.ID == "ID:GetSet44" {
+		fmt.Println(m)
+	}
 	switch m.MType {
 	case "counter":
 		if m.Delta == nil {
