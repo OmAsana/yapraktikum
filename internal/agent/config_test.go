@@ -12,17 +12,23 @@ import (
 	"github.com/OmAsana/yapraktikum/internal/pkg"
 )
 
+var defaultCfg = &Config{
+	Address:        DefaultAddress,
+	ReportInterval: DefaultReportInterval,
+	PollInterval:   DefaultPollInterval,
+}
+
 func TestAgentInitConfig(t *testing.T) {
 	t.Run("check default", func(t *testing.T) {
 		os.Unsetenv("ADDRESS")
 		os.Unsetenv("POLL_INTERVAL")
 		os.Unsetenv("REPORT_INTERVAL")
-		cfg, err := InitConfig()
+		cfg, err := initEnvArgs(*defaultCfg)
 
 		require.NoError(t, err)
-		assert.Equal(t, cfg.PollInterval, 2*time.Second)
-		assert.Equal(t, cfg.ReportInterval, 10*time.Second)
-		assert.Equal(t, cfg.Address, "127.0.0.1:8080")
+		assert.Equal(t, cfg.PollInterval, defaultCfg.PollInterval)
+		assert.Equal(t, cfg.ReportInterval, defaultCfg.ReportInterval)
+		assert.Equal(t, cfg.Address, defaultCfg.Address)
 	})
 
 	t.Run("check overrides", func(t *testing.T) {
@@ -39,7 +45,7 @@ func TestAgentInitConfig(t *testing.T) {
 			unsetAdd()
 		}()
 
-		cfg, err := InitConfig()
+		cfg, err := initEnvArgs(*defaultCfg)
 		require.NoError(t, err)
 		assert.Equal(t, cfg.Address, newAddress)
 		assert.Equal(t, cfg.PollInterval, newPollInterval)
@@ -49,14 +55,34 @@ func TestAgentInitConfig(t *testing.T) {
 
 	t.Run("check error", func(t *testing.T) {
 		unset, _ := pkg.SetEnv(t, "POLL_INTERVAL", "10")
-		_, err := InitConfig()
+		_, err := initEnvArgs(*defaultCfg)
 		require.Error(t, err)
 		unset()
 
 		unset, _ = pkg.SetEnv(t, "REPORT_INTERVAL", "10")
-		_, err = InitConfig()
+		_, err = initEnvArgs(*defaultCfg)
 		require.Error(t, err)
 		unset()
+
+	})
+}
+
+func Test_initCmdFlags(t *testing.T) {
+	t.Run("test default args", func(t *testing.T) {
+		cfg := initCmdFlagsWithArgs([]string{})
+		assert.EqualValues(t, defaultCfg, cfg)
+
+	})
+
+	t.Run("test override", func(t *testing.T) {
+		cfg := initCmdFlagsWithArgs([]string{"-a", "localhost:1234", "-p", "100s", "-r", "1s"})
+
+		targetCfg := Config{
+			Address:        "localhost:1234",
+			ReportInterval: 1 * time.Second,
+			PollInterval:   100 * time.Second,
+		}
+		assert.EqualValues(t, &targetCfg, cfg)
 
 	})
 }

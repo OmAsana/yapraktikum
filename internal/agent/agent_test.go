@@ -127,7 +127,7 @@ func TestNewAgentWithOptions(t *testing.T) {
 		pkg.SetEnv(t, "POLL_INTERVAL", newPollInterval)
 		pkg.SetEnv(t, "REPORT_INTERVAL", newReportInterval)
 
-		cfg, err := InitConfig()
+		cfg, err := initEnvArgs(Config{})
 		assert.NoError(t, err)
 
 		agent, err := NewAgentWithOptions(WithAddress(cfg.Address),
