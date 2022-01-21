@@ -40,7 +40,6 @@ func (c cacherWriter) WriteMultipleMetrics(metrics *[]handlers.Metrics) error {
 	os.Truncate(c.file.Name(), 0)
 	c.file.Seek(0, 0)
 	return c.encoder.Encode(metrics)
-	return nil
 }
 
 func (c *cacherWriter) Close() error {
