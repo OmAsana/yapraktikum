@@ -193,7 +193,7 @@ func (ms MetricsServer) saveMetric(writer http.ResponseWriter, m handlers.Metric
 			http.Error(writer, "internal error", http.StatusInternalServerError)
 			return
 		}
-		ms.writeMetricToFile(&m)
+		ms.flushToDisk()
 		writer.WriteHeader(http.StatusOK)
 		return
 	case "gauge":
@@ -212,7 +212,7 @@ func (ms MetricsServer) saveMetric(writer http.ResponseWriter, m handlers.Metric
 			http.Error(writer, "internal error", http.StatusInternalServerError)
 			return
 		}
-		ms.writeMetricToFile(&m)
+		ms.flushToDisk()
 		writer.WriteHeader(http.StatusOK)
 		return
 	default:
@@ -381,11 +381,11 @@ func (ms MetricsServer) writeMetricToFile(m *handlers.Metrics) {
 	if ms.storeInterval > 0 {
 		return
 	}
-
-	err := ms.cacherWriter.WriteMetric(m)
-	if err != nil {
-		fmt.Println(err)
-	}
+	ms.flushToDisk()
+	//err := ms.cacherWriter.WriteSingleMetric(m)
+	//if err != nil {
+	//	fmt.Println(err)
+	//}
 }
 
 func (ms MetricsServer) periodicDataWriter() {
@@ -404,23 +404,30 @@ func (ms MetricsServer) flushToDisk() {
 	if err != nil {
 		fmt.Println(err)
 	}
+	flushMetrics := []handlers.Metrics{}
 	for _, g := range gauges {
 		m := metrics.GaugeToHandlerScheme(g)
+		flushMetrics = append(flushMetrics, m)
 
-		err := ms.cacherWriter.WriteMetric(&m)
-		if err != nil {
-			fmt.Println(err)
-		}
+		//err := ms.cacherWriter.WriteSingleMetric(&m)
+		//if err != nil {
+		//	fmt.Println(err)
+		//}
 	}
 
 	for _, c := range couters {
 		m := metrics.CounterToHandlerScheme(c)
+		flushMetrics = append(flushMetrics, m)
 
-		err := ms.cacherWriter.WriteMetric(&m)
-		if err != nil {
-			fmt.Println(err)
-		}
+		//err := ms.cacherWriter.WriteSingleMetric(&m)
+		//if err != nil {
+		//	fmt.Println(err)
+		//}
+	}
 
+	err = ms.cacherWriter.WriteMultipleMetrics(&flushMetrics)
+	if err != nil {
+		fmt.Println(err)
 	}
 }
 

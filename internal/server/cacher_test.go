@@ -43,7 +43,7 @@ func TestNewCacher(t *testing.T) {
 	}
 
 	for _, m := range data {
-		err = cacher.WriteMetric(&m)
+		err = cacher.WriteSingleMetric(&m)
 		assert.NoError(t, err)
 	}
 

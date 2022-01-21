@@ -8,7 +8,8 @@ import (
 )
 
 type Cacher interface {
-	WriteMetric(m *handlers.Metrics) error
+	WriteSingleMetric(m *handlers.Metrics) error
+	WriteMultipleMetrics(m *[]handlers.Metrics) error
 	Close() error
 }
 
@@ -20,7 +21,7 @@ type cacherWriter struct {
 }
 
 func NewCacherWriter(fileName string) (*cacherWriter, error) {
-	file, err := os.OpenFile(fileName, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0777)
+	file, err := os.OpenFile(fileName, os.O_WRONLY|os.O_CREATE, 0777)
 	if err != nil {
 		return nil, err
 	}
@@ -31,9 +32,14 @@ func NewCacherWriter(fileName string) (*cacherWriter, error) {
 	}, nil
 }
 
-func (c *cacherWriter) WriteMetric(metrics *handlers.Metrics) error {
+func (c *cacherWriter) WriteSingleMetric(metrics *handlers.Metrics) error {
 	return c.encoder.Encode(&metrics)
 }
+
+func (c cacherWriter) WriteMultipleMetrics(metrics *[]handlers.Metrics) error {
+	return c.encoder.Encode(&metrics)
+}
+
 func (c *cacherWriter) Close() error {
 	return c.file.Close()
 }
@@ -79,11 +85,15 @@ var _ Cacher = (*noopCacher)(nil)
 type noopCacher struct {
 }
 
+func (n *noopCacher) WriteMultipleMetrics(m *[]handlers.Metrics) error {
+	return nil
+}
+
 func NewNoopCacher() *noopCacher {
 	return &noopCacher{}
 }
 
-func (n *noopCacher) WriteMetric(_ *handlers.Metrics) error {
+func (n *noopCacher) WriteSingleMetric(_ *handlers.Metrics) error {
 	return nil
 }
 
