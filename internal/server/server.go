@@ -27,26 +27,6 @@ type MetricsServer struct {
 	cacherWriter  Cacher
 }
 
-type ServerOpts func(server *MetricsServer)
-
-func WithStoreFile(file string) ServerOpts {
-	return func(server *MetricsServer) {
-		server.storeFile = file
-	}
-}
-
-func WithStoreInterval(interval time.Duration) ServerOpts {
-	return func(server *MetricsServer) {
-		server.storeInterval = interval
-	}
-}
-
-func WithRestore(restore bool) ServerOpts {
-	return func(server *MetricsServer) {
-		server.restore = restore
-	}
-}
-
 func NewMetricsServer(db MetricsRepository, opts ...ServerOpts) (*MetricsServer, error) {
 	srv := &MetricsServer{
 		db:            db,
@@ -85,6 +65,7 @@ func setupRoutes(srv *MetricsServer) {
 	srv.Use(middleware.RealIP)
 	srv.Use(middleware.Logger)
 	srv.Use(middleware.Recoverer)
+	srv.Use(compressorHandler)
 
 	srv.Get("/", srv.ReturnCurrentMetrics())
 	srv.Get("/value/{metricType}/{metricName}", srv.GetMetric())
@@ -295,7 +276,7 @@ func (ms MetricsServer) UpdateCounters() http.HandlerFunc {
 		metricName := chi.URLParam(request, "counterName")
 		value := chi.URLParam(request, "counterValue")
 
-		val, err := validateCounter(value)
+		val, err := pkg.ValidateCounter(value)
 		if err != nil {
 			http.Error(writer, err.Error(), http.StatusBadRequest)
 			return
@@ -422,17 +403,4 @@ func (ms MetricsServer) flushToDisk() {
 
 func (ms MetricsServer) FlushToDisk() {
 	ms.flushToDisk()
-}
-
-func validateCounter(value string) (int64, error) {
-	val, err := strconv.ParseInt(value, 10, 64)
-	if err != nil {
-		return val, fmt.Errorf("value is not int")
-
-	}
-
-	if val < 0 {
-		return val, fmt.Errorf("counter can not be negative")
-	}
-	return val, err
 }
