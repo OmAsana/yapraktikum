@@ -133,8 +133,8 @@ func (ms MetricsServer) Value() http.HandlerFunc {
 			http.Error(writer, err.Error(), http.StatusInternalServerError)
 			return
 		}
-
-		writer.Header().Add("Content-Type", "application/json")
+		writer.Header().Set("Content-Type", http.DetectContentType(out))
+		//writer.Header().Add("Content-Type", "application/json")
 		writer.Write(out)
 	}
 }
