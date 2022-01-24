@@ -11,30 +11,7 @@ import (
 	"github.com/OmAsana/yapraktikum/internal/pkg"
 )
 
-var defaultConfig = &Config{
-	Address:       DefaultAddress,
-	StoreInterval: DefaultStoreInterval,
-	StoreFile:     DefaultStoreFile,
-	Restore:       DefaultRestore,
-}
-
 func TestServerInitConfig(t *testing.T) {
-	defaults := Config{
-		Address:       "localhost:8080",
-		StoreInterval: 300 * time.Second,
-		StoreFile:     "/tmp/devops-metrics-db.json",
-		Restore:       true,
-	}
-
-	t.Run("check default", func(t *testing.T) {
-		cfg, err := initEnvArgs(*defaultConfig)
-
-		require.NoError(t, err)
-		assert.Equal(t, cfg.Address, defaults.Address)
-		assert.Equal(t, cfg.StoreInterval, defaults.StoreInterval)
-		assert.Equal(t, cfg.StoreFile, defaults.StoreFile)
-		assert.Equal(t, cfg.Restore, defaults.Restore)
-	})
 
 	t.Run("check overrides", func(t *testing.T) {
 		overrides := map[string]string{
@@ -50,7 +27,8 @@ func TestServerInitConfig(t *testing.T) {
 			defer unset()
 		}
 
-		cfg, err := initEnvArgs(*defaultConfig)
+		cfg := DefaultConfig
+		err := cfg.initEnvArgs()
 		require.NoError(t, err)
 		assert.Equal(t, cfg.Address, overrides["ADDRESS"])
 		assert.Equal(t, cfg.StoreInterval, func() time.Duration {
@@ -76,19 +54,23 @@ func TestServerInitConfig(t *testing.T) {
 
 func Test_initCmdFlags(t *testing.T) {
 	t.Run("test default args", func(t *testing.T) {
-		cfg := initCmdFlagsWithArgs([]string{})
-		assert.EqualValues(t, defaultConfig, cfg)
+		cfg := DefaultConfig
+		err := cfg.initCmdFlagsWithArgs([]string{})
+		assert.NoError(t, err)
+		assert.EqualValues(t, DefaultConfig, cfg)
 
 	})
 
 	t.Run("test override", func(t *testing.T) {
-		cfg := initCmdFlagsWithArgs([]string{
+		cfg := DefaultConfig
+		err := cfg.initCmdFlagsWithArgs([]string{
 			"-a", "localhost:9090",
 			"-r=false",
 			"-i", "200s",
 			"-f", "/tmp/random_file",
 		})
-		fmt.Println(cfg)
+
+		assert.NoError(t, err)
 
 		targetCfg := Config{
 			Address:       "localhost:9090",
@@ -96,7 +78,7 @@ func Test_initCmdFlags(t *testing.T) {
 			StoreFile:     "/tmp/random_file",
 			Restore:       false,
 		}
-		assert.EqualValues(t, &targetCfg, cfg)
+		assert.EqualValues(t, targetCfg, cfg)
 
 	})
 }

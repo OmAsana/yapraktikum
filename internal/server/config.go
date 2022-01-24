@@ -2,7 +2,6 @@ package server
 
 import (
 	"flag"
-	"fmt"
 	"os"
 	"time"
 
@@ -14,6 +13,13 @@ var (
 	DefaultStoreInterval = 300 * time.Second
 	DefaultStoreFile     = "/tmp/devops-metrics-db.json"
 	DefaultRestore       = true
+
+	DefaultConfig = Config{
+		Address:       DefaultAddress,
+		StoreInterval: DefaultStoreInterval,
+		StoreFile:     DefaultStoreFile,
+		Restore:       DefaultRestore,
+	}
 )
 
 type Config struct {
@@ -24,23 +30,20 @@ type Config struct {
 }
 
 func InitConfig() (*Config, error) {
-	cfg := initCmdFlags()
-	return initEnvArgs(*cfg)
-}
+	cfg := DefaultConfig
 
-func initEnvArgs(cfg Config) (*Config, error) {
-	if err := env.Parse(&cfg); err != nil {
+	if err := cfg.initCmdFlagsWithArgs(os.Args[1:]); err != nil {
 		return nil, err
 	}
+
+	if err := cfg.initEnvArgs(); err != nil {
+		return nil, err
+	}
+
 	return &cfg, nil
 }
 
-func initCmdFlags() *Config {
-	return initCmdFlagsWithArgs(os.Args[1:])
-}
-
-func initCmdFlagsWithArgs(args []string) *Config {
-	fmt.Println(args)
+func (c *Config) initCmdFlagsWithArgs(args []string) error {
 	command := flag.NewFlagSet(os.Args[0], flag.ExitOnError)
 
 	address := command.String("a", DefaultAddress, "Listen on address")
@@ -48,13 +51,21 @@ func initCmdFlagsWithArgs(args []string) *Config {
 	storeInterval := command.Duration("i", DefaultStoreInterval, "Store interval")
 	storeFile := command.String("f", DefaultStoreFile, "Store file")
 
-	command.Parse(args)
-
-	var cfg = Config{
-		Address:       *address,
-		StoreInterval: *storeInterval,
-		StoreFile:     *storeFile,
-		Restore:       *restore,
+	if err := command.Parse(args); err != nil {
+		return err
 	}
-	return &cfg
+
+	c.Address = *address
+	c.Restore = *restore
+	c.StoreFile = *storeFile
+	c.StoreInterval = *storeInterval
+
+	return nil
+}
+
+func (c *Config) initEnvArgs() error {
+	if err := env.Parse(c); err != nil {
+		return err
+	}
+	return nil
 }
