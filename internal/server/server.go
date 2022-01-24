@@ -307,6 +307,7 @@ func (ms MetricsServer) ReturnCurrentMetrics() http.HandlerFunc {
 		for _, c := range counters {
 			sb.WriteString(fmt.Sprintf("%s\t\t%d\n", c.Name, c.Value))
 		}
+		writer.Header().Set("Content-Type", "text/html")
 		_, err = io.WriteString(writer, sb.String())
 		if err != nil {
 			http.Error(writer, "internal error", http.StatusInternalServerError)
