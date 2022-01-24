@@ -9,8 +9,9 @@ import (
 type RepositoryError error
 
 var (
-	ErrorCounterNotFound RepositoryError = fmt.Errorf("counter not found")
-	ErrorGaugeNotFound   RepositoryError = fmt.Errorf("gauge not found")
+	ErrorCounterNotFound  RepositoryError = fmt.Errorf("counter not found")
+	ErrorCounterIsNoValid RepositoryError = fmt.Errorf("counter is not valid")
+	ErrorGaugeNotFound    RepositoryError = fmt.Errorf("gauge not found")
 )
 
 type MetricsRepository interface {

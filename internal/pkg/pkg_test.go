@@ -54,3 +54,39 @@ func Test_floatIsNumber(t *testing.T) {
 
 	}
 }
+
+func TestContains(t *testing.T) {
+	type args struct {
+		list  []string
+		value string
+	}
+	tests := []struct {
+		name string
+		args args
+		want bool
+	}{
+		{
+			name: "countains",
+			args: struct {
+				list  []string
+				value string
+			}{list: []string{"a", "b"}, value: "a"},
+			want: true,
+		},
+		{
+			name: "does not countain",
+			args: struct {
+				list  []string
+				value string
+			}{list: []string{"a", "b"}, value: "c"},
+			want: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := Contains(tt.args.list, tt.args.value); got != tt.want {
+				t.Errorf("Contains() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

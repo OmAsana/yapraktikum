@@ -12,7 +12,7 @@ type Registry struct {
 
 func NewRegistry() *Registry {
 	return &Registry{PollCounter: Counter{
-		Name:  "PollCounter",
+		Name:  "PollCount",
 		Value: 0,
 	}}
 }

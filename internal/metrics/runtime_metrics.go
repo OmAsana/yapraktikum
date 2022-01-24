@@ -8,10 +8,12 @@ import (
 
 var memoryStats = []string{
 	"Alloc",
+	"TotalAlloc",
 	"BuckHashSys",
 	"Frees",
-	"GCSys",
 	"GCCPUFraction",
+	"GCCPUFraction",
+	"GCSys",
 	"GCSys",
 	"HeapAlloc",
 	"HeapIdle",
@@ -27,14 +29,13 @@ var memoryStats = []string{
 	"MSpanSys",
 	"Mallocs",
 	"NextGC",
+	"NumForcedGC",
+	"NumGC",
 	"OtherSys",
 	"PauseTotalNs",
 	"StackInuse",
 	"StackSys",
 	"Sys",
-	"NumForcedGC",
-	"NumGC",
-	"GCCPUFraction",
 }
 
 func CollectRuntimeMetrics() []Gauge {

@@ -1,6 +1,10 @@
 package metrics
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/OmAsana/yapraktikum/internal/handlers"
+)
 
 type Counter struct {
 	Name  string
@@ -9,4 +13,21 @@ type Counter struct {
 
 func (c Counter) String() string {
 	return fmt.Sprintf("<Counter: Name: %s, Value: %d>", c.Name, c.Value)
+}
+
+func (c Counter) IsValid() error {
+	if c.Value < 0 {
+		return fmt.Errorf("counter can not be negative")
+	}
+	return nil
+}
+
+func CounterToHandlerScheme(c Counter) handlers.Metrics {
+	return handlers.Metrics{
+		ID:    c.Name,
+		MType: "counter",
+		Delta: &c.Value,
+		Value: nil,
+	}
+
 }

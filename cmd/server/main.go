@@ -11,15 +11,33 @@ import (
 	"github.com/OmAsana/yapraktikum/internal/server"
 )
 
-func startHTTPServer(wg *sync.WaitGroup, handler http.Handler) *http.Server {
-	srv := &http.Server{Addr: "127.0.0.1:8080", Handler: handler}
+func startHTTPServer(wg *sync.WaitGroup) (*http.Server, error) {
+
+	cfg, err := server.InitConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	repo := server.NewRepositoryMock()
+	handler, err := server.NewMetricsServer(
+		repo,
+		server.WithRestore(cfg.Restore),
+		server.WithStoreFile(cfg.StoreFile),
+		server.WithStoreInterval(cfg.StoreInterval),
+	)
+	if err != nil {
+		return nil, err
+	}
+	srv := &http.Server{Addr: cfg.Address, Handler: handler}
 	go func() {
 		defer wg.Done()
+		defer handler.FlushToDisk()
+
 		if err := srv.ListenAndServe(); err != http.ErrServerClosed {
 			fmt.Println("Server shut down with err: ", err)
 		}
 	}()
-	return srv
+	return srv, nil
 
 }
 
@@ -27,13 +45,14 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT)
 	defer stop()
 
-	repo := server.NewRepositoryMock()
-	metricsServer := server.NewMetricsServer(repo)
-
 	waitServerShutdown := &sync.WaitGroup{}
 
 	waitServerShutdown.Add(1)
-	httpServer := startHTTPServer(waitServerShutdown, metricsServer)
+	httpServer, err := startHTTPServer(waitServerShutdown)
+
+	if err != nil {
+		panic(err)
+	}
 
 	go func() {
 		<-ctx.Done()

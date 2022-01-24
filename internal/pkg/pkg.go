@@ -3,6 +3,8 @@ package pkg
 import (
 	"math"
 	"net/http"
+	"os"
+	"testing"
 )
 
 func CheckRequestMethod(next http.Handler, method string) http.Handler {
@@ -18,8 +20,42 @@ func CheckRequestMethod(next http.Handler, method string) http.Handler {
 
 //FloatIsNumber check that f is not an inf or NaN
 func FloatIsNumber(f float64) bool {
+
 	if math.IsInf(f, 0) || math.IsNaN(f) {
 		return false
 	}
 	return true
+}
+
+func Contains(list []string, value string) bool {
+	for _, v := range list {
+		return v == value
+	}
+
+	return false
+}
+
+func PointerFloat(f float64) *float64 {
+	return &f
+}
+
+func PointerInt(i int64) *int64 {
+	return &i
+}
+
+type UnsetFunc func()
+
+func SetEnv(t *testing.T, key, value string) (UnsetFunc, error) {
+	t.Helper()
+
+	err := os.Setenv(key, value)
+	if err != nil {
+		return nil, err
+	}
+
+	return func() {
+		_ = os.Unsetenv(key)
+
+	}, nil
+
 }
