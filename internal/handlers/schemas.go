@@ -46,7 +46,7 @@ func (m *Metrics) HashMetric(key string) error {
 
 func (m *Metrics) ComputeHash(key string) (string, error) {
 	var err error
-	var encrypted []byte
+	var encrypted string
 
 	if m.Delta != nil {
 		encrypted, err = encrypt.Encrypt([]byte(fmt.Sprintf("%s:counter:%d", m.ID, m.Delta)), key)
@@ -60,8 +60,8 @@ func (m *Metrics) ComputeHash(key string) (string, error) {
 		return "", err
 	}
 
-	if encrypted == nil {
+	if encrypted == "" {
 		return "", fmt.Errorf("invalid metric")
 	}
-	return string(encrypted), nil
+	return encrypted, nil
 }

@@ -12,20 +12,7 @@ func createSHA256Hash(key string) []byte {
 	return hasher.Sum(nil)
 }
 
-func Encrypt(data []byte, key string) ([]byte, error) {
-	sha256Key := createSHA256Hash(key)
-	gcm, err := newGCM(sha256Key)
-	if err != nil {
-		return nil, err
-	}
-
-	nonce := nonceFromKey(sha256Key, gcm)
-	encrypted := gcm.Seal(nil, nonce, data, nil)
-
-	return encrypted, nil
-}
-
-func Decrypt(data []byte, key string) (string, error) {
+func Encrypt(data []byte, key string) (string, error) {
 	sha256Key := createSHA256Hash(key)
 	gcm, err := newGCM(sha256Key)
 	if err != nil {
@@ -33,7 +20,20 @@ func Decrypt(data []byte, key string) (string, error) {
 	}
 
 	nonce := nonceFromKey(sha256Key, gcm)
-	decrypted, err := gcm.Open(nil, nonce, data, nil)
+	encrypted := gcm.Seal(nil, nonce, data, nil)
+
+	return string(encrypted), nil
+}
+
+func Decrypt(data string, key string) (string, error) {
+	sha256Key := createSHA256Hash(key)
+	gcm, err := newGCM(sha256Key)
+	if err != nil {
+		return "", err
+	}
+
+	nonce := nonceFromKey(sha256Key, gcm)
+	decrypted, err := gcm.Open(nil, nonce, []byte(data), nil)
 	if err != nil {
 		return "", err
 	}

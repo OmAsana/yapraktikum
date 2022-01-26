@@ -418,11 +418,11 @@ func (ms MetricsServer) FlushToDisk() {
 
 func (ms MetricsServer) hashIsValid(m handlers.Metrics) (bool, error) {
 	// Do not check hash if server hash key is empty
-	if !pkg.StringNotEmpry(ms.hashKey) {
+	if !pkg.StringNotEmpty(ms.hashKey) {
 		return true, nil
 	}
 
-	if !pkg.StringNotEmpry(m.Hash) {
+	if !pkg.StringNotEmpty(m.Hash) {
 		return true, nil
 	}
 
@@ -437,7 +437,7 @@ func (ms MetricsServer) hashIsValid(m handlers.Metrics) (bool, error) {
 }
 
 func (ms MetricsServer) writeHash(h *handlers.Metrics) error {
-	if pkg.StringNotEmpry(ms.hashKey) {
+	if pkg.StringNotEmpty(ms.hashKey) {
 		return h.HashMetric(ms.hashKey)
 	}
 
