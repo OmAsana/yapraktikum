@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/jinzhu/copier"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -89,9 +90,10 @@ func TestMetrics_ComputeHash(t *testing.T) {
 		Value: pkg.PointerFloat(12),
 		Hash:  "",
 	}
-	m2 := m
+	m2 := Metrics{}
+	err := copier.Copy(&m2, m)
+	assert.NoError(t, err)
 
 	fmt.Println(m2.ComputeHash(key))
-	fmt.Println(m.ComputeHash(key))
 	fmt.Println(m.ComputeHash(key))
 }

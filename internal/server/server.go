@@ -154,13 +154,11 @@ func (ms MetricsServer) Update() http.HandlerFunc {
 		var m handlers.Metrics
 		err := json.NewDecoder(request.Body).Decode(&m)
 		if err != nil {
-			fmt.Println("json error")
 			http.Error(writer, err.Error(), http.StatusBadRequest)
 			return
 		}
 		ok, err := ms.hashIsValid(m)
 		if !ok {
-			fmt.Println("Hash is ok")
 			http.Error(writer, err.Error(), http.StatusBadRequest)
 			return
 		}
@@ -431,7 +429,6 @@ func (ms MetricsServer) hashIsValid(m handlers.Metrics) (bool, error) {
 
 	hash, err := m.ComputeHash(ms.hashKey)
 	if err != nil {
-		fmt.Println(err)
 		return false, err
 	}
 	if encrypt.HashesEqual(m.Hash, hash) {

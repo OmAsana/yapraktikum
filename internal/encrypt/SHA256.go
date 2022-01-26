@@ -6,6 +6,7 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
+	"fmt"
 )
 
 func createSHA256Hash(key string) []byte {
@@ -15,6 +16,7 @@ func createSHA256Hash(key string) []byte {
 }
 
 func EncryptSHA256(msg string, key string) string {
+	fmt.Println(msg)
 	h := hmac.New(sha256.New, []byte(key))
 	h.Write([]byte(msg))
 	return hex.EncodeToString(h.Sum(nil))
