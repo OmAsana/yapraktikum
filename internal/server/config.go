@@ -13,6 +13,7 @@ var (
 	DefaultStoreInterval = 300 * time.Second
 	DefaultStoreFile     = "/tmp/devops-metrics-db.json"
 	DefaultRestore       = true
+	DefaultHashKey       = ""
 
 	DefaultConfig = Config{
 		Address:       DefaultAddress,
@@ -27,6 +28,7 @@ type Config struct {
 	StoreInterval time.Duration `env:"STORE_INTERVAL"`
 	StoreFile     string        `env:"STORE_FILE"`
 	Restore       bool          `env:"RESTORE"`
+	HashKey       string        `env:"KEY"`
 }
 
 func InitConfig() (*Config, error) {
@@ -50,6 +52,7 @@ func (c *Config) initCmdFlagsWithArgs(args []string) error {
 	restore := command.Bool("r", DefaultRestore, "Restore metrics on startup")
 	storeInterval := command.Duration("i", DefaultStoreInterval, "Store interval")
 	storeFile := command.String("f", DefaultStoreFile, "Store file")
+	hashKey := command.String("k", DefaultHashKey, "Hash key")
 
 	if err := command.Parse(args); err != nil {
 		return err
@@ -59,6 +62,7 @@ func (c *Config) initCmdFlagsWithArgs(args []string) error {
 	c.Restore = *restore
 	c.StoreFile = *storeFile
 	c.StoreInterval = *storeInterval
+	c.HashKey = *hashKey
 
 	return nil
 }

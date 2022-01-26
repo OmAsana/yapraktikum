@@ -25,9 +25,10 @@ type MetricsServer struct {
 	restore       bool
 	cacherReader  *cacherReader
 	cacherWriter  Cacher
+	hashKey       string
 }
 
-func NewMetricsServer(db MetricsRepository, opts ...ServerOpts) (*MetricsServer, error) {
+func NewMetricsServer(db MetricsRepository, opts ...Options) (*MetricsServer, error) {
 	srv := &MetricsServer{
 		db:            db,
 		Mux:           chi.NewMux(),

@@ -24,6 +24,7 @@ func startHTTPServer(wg *sync.WaitGroup) (*http.Server, error) {
 		server.WithRestore(cfg.Restore),
 		server.WithStoreFile(cfg.StoreFile),
 		server.WithStoreInterval(cfg.StoreInterval),
+		server.WithHashKey(cfg.HashKey),
 	)
 	if err != nil {
 		return nil, err
