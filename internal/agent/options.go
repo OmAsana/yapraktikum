@@ -41,5 +41,6 @@ func WithPollInterval(t time.Duration) Option {
 func WithHashKey(key string) Option {
 	return func(agent *Agent) error {
 		agent.cfg.HashKey = key
+		return nil
 	}
 }
