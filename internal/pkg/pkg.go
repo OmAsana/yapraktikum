@@ -74,3 +74,10 @@ func ValidateCounter(value string) (int64, error) {
 	}
 	return val, err
 }
+
+func StringNotEmpry(s string) bool {
+	if s != "" {
+		return true
+	}
+	return false
+}
