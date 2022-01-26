@@ -1,12 +1,15 @@
 package server
 
 import (
+	"sync"
+
 	"github.com/OmAsana/yapraktikum/internal/metrics"
 )
 
 var _ MetricsRepository = &RepositoryMock{}
 
 type RepositoryMock struct {
+	sync.RWMutex
 	gauges   map[string]float64
 	counters map[string]int64
 }
@@ -19,6 +22,8 @@ func NewRepositoryMock() *RepositoryMock {
 }
 
 func (r *RepositoryMock) RetrieveCounter(name string) (metrics.Counter, RepositoryError) {
+	r.RLock()
+	defer r.RUnlock()
 	if v, ok := r.counters[name]; ok {
 		return metrics.Counter{
 			Name:  name,
@@ -29,6 +34,8 @@ func (r *RepositoryMock) RetrieveCounter(name string) (metrics.Counter, Reposito
 }
 
 func (r *RepositoryMock) RetrieveGauge(name string) (metrics.Gauge, RepositoryError) {
+	r.RLock()
+	defer r.RUnlock()
 	if v, ok := r.gauges[name]; ok {
 		return metrics.Gauge{
 			Name:  name,
@@ -39,6 +46,8 @@ func (r *RepositoryMock) RetrieveGauge(name string) (metrics.Gauge, RepositoryEr
 }
 
 func (r *RepositoryMock) StoreCounter(counter metrics.Counter) RepositoryError {
+	r.Lock()
+	defer r.Unlock()
 	err := counter.IsValid()
 	if err != nil {
 		return ErrorCounterIsNoValid
@@ -55,6 +64,8 @@ func (r *RepositoryMock) StoreCounter(counter metrics.Counter) RepositoryError {
 }
 
 func (r *RepositoryMock) StoreGauge(gauge metrics.Gauge) RepositoryError {
+	r.Lock()
+	defer r.Unlock()
 	r.gauges[gauge.Name] = gauge.Value
 	return nil
 }
@@ -63,6 +74,8 @@ func (r *RepositoryMock) ListStoredMetrics() ([]metrics.Gauge, []metrics.Counter
 	var gauges []metrics.Gauge
 	var couter []metrics.Counter
 
+	r.RLock()
+	defer r.RUnlock()
 	for k, v := range r.gauges {
 		gauges = append(gauges, metrics.Gauge{
 			Name:  k,
