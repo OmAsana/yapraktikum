@@ -6,9 +6,9 @@ import (
 	"time"
 )
 
-type AgentOption func(*Agent) error
+type Option func(*Agent) error
 
-func WithAddress(address string) AgentOption {
+func WithAddress(address string) Option {
 	return func(agent *Agent) error {
 		if !strings.HasPrefix(address, "http://") {
 			address = "http://" + address
@@ -24,16 +24,22 @@ func WithAddress(address string) AgentOption {
 	}
 }
 
-func WithReportInterval(t time.Duration) AgentOption {
+func WithReportInterval(t time.Duration) Option {
 	return func(agent *Agent) error {
 		agent.cfg.ReportInterval = t
 		return nil
 	}
 }
 
-func WithPollInterval(t time.Duration) AgentOption {
+func WithPollInterval(t time.Duration) Option {
 	return func(agent *Agent) error {
 		agent.cfg.PollInterval = t
 		return nil
+	}
+}
+
+func WithHashKey(key string) Option {
+	return func(agent *Agent) error {
+		agent.cfg.HashKey = key
 	}
 }

@@ -21,6 +21,7 @@ type config struct {
 	PollInterval   time.Duration
 	ReportInterval time.Duration
 	BaseURL        *url.URL
+	HashKey        string
 }
 type Agent struct {
 	registry   *metrics.Registry
@@ -29,12 +30,12 @@ type Agent struct {
 }
 
 func NewDefaultAgent() *Agent {
-	defaultBaseURL, _ = url.Parse("http://127.0.0.1:8080")
+	defaultBaseURL, _ = url.Parse(fmt.Sprintf("http://%s", DefaultAddress))
 	return &Agent{registry: metrics.NewRegistry(),
 		httpClient: &http.Client{},
 		cfg: config{
-			PollInterval:   time.Second * 2,
-			ReportInterval: time.Second * 10,
+			PollInterval:   DefaultPollInterval,
+			ReportInterval: DefaultReportInterval,
 			BaseURL:        defaultBaseURL,
 		}}
 }
@@ -45,7 +46,7 @@ func NewAgentWithBaseURL(baseURL *url.URL) *Agent {
 	return agent
 }
 
-func NewAgentWithOptions(opts ...AgentOption) (*Agent, error) {
+func NewAgentWithOptions(opts ...Option) (*Agent, error) {
 	agent := NewDefaultAgent()
 
 	for _, opt := range opts {

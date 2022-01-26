@@ -20,6 +20,7 @@ func main() {
 		agent.WithAddress(cfg.Address),
 		agent.WithPollInterval(cfg.PollInterval),
 		agent.WithReportInterval(cfg.ReportInterval),
+		agent.WithHashKey(cfg.HaskKey),
 	)
 	if err != nil {
 		panic(err)
