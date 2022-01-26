@@ -4,6 +4,7 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/sha256"
+	"encoding/hex"
 )
 
 func createSHA256Hash(key string) []byte {
@@ -22,7 +23,7 @@ func Encrypt(data []byte, key string) (string, error) {
 	nonce := nonceFromKey(sha256Key, gcm)
 	encrypted := gcm.Seal(nil, nonce, data, nil)
 
-	return string(encrypted), nil
+	return hex.EncodeToString(encrypted), nil
 }
 
 func Decrypt(data string, key string) (string, error) {
@@ -37,7 +38,7 @@ func Decrypt(data string, key string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return string(decrypted), err
+	return hex.EncodeToString(decrypted), err
 
 }
 
