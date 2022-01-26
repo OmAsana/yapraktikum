@@ -76,8 +76,5 @@ func ValidateCounter(value string) (int64, error) {
 }
 
 func StringNotEmpry(s string) bool {
-	if s != "" {
-		return true
-	}
-	return false
+	return s != ""
 }
