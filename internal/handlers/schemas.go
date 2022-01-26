@@ -34,6 +34,17 @@ func (m *Metrics) UnmarshalJSON(bytes []byte) error {
 }
 
 func (m *Metrics) HashMetric(key string) error {
+	encrypted, err := m.ComputeHash(key)
+	if err != nil {
+		return err
+	}
+
+	m.Hash = encrypted
+	return nil
+
+}
+
+func (m *Metrics) ComputeHash(key string) (string, error) {
 	var err error
 	var encrypted []byte
 
@@ -46,14 +57,11 @@ func (m *Metrics) HashMetric(key string) error {
 	}
 
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	if encrypted == nil {
-		return fmt.Errorf("invalid metric")
+		return "", fmt.Errorf("invalid metric")
 	}
-
-	m.Hash = string(encrypted)
-	return nil
-
+	return string(encrypted), nil
 }

@@ -13,7 +13,9 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -597,4 +599,48 @@ func TestFlushToDisk(t *testing.T) {
 
 	})
 
+}
+
+func TestMetricsServer_hashIsValid(t *testing.T) {
+	type fields struct {
+		Mux           *chi.Mux
+		db            MetricsRepository
+		storeInterval time.Duration
+		storeFile     string
+		restore       bool
+		cacherReader  *cacherReader
+		cacherWriter  Cacher
+		hashKey       string
+	}
+	type args struct {
+		m handlers.Metrics
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		want    bool
+		wantErr assert.ErrorAssertionFunc
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ms := MetricsServer{
+				Mux:           tt.fields.Mux,
+				db:            tt.fields.db,
+				storeInterval: tt.fields.storeInterval,
+				storeFile:     tt.fields.storeFile,
+				restore:       tt.fields.restore,
+				cacherReader:  tt.fields.cacherReader,
+				cacherWriter:  tt.fields.cacherWriter,
+				hashKey:       tt.fields.hashKey,
+			}
+			got, err := ms.hashIsValid(tt.args.m)
+			if !tt.wantErr(t, err, fmt.Sprintf("hashIsValid(%v)", tt.args.m)) {
+				return
+			}
+			assert.Equalf(t, tt.want, got, "hashIsValid(%v)", tt.args.m)
+		})
+	}
 }

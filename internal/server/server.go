@@ -129,6 +129,11 @@ func (ms MetricsServer) Value() http.HandlerFunc {
 
 		}
 
+		if err := ms.writeHash(&m); err != nil {
+			http.Error(writer, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
 		out, err := json.Marshal(m)
 		if err != nil {
 			http.Error(writer, err.Error(), http.StatusInternalServerError)
@@ -148,6 +153,11 @@ func (ms MetricsServer) Update() http.HandlerFunc {
 		var m handlers.Metrics
 		err := json.NewDecoder(request.Body).Decode(&m)
 		if err != nil {
+			http.Error(writer, err.Error(), http.StatusBadRequest)
+			return
+		}
+		ok, err := ms.hashIsValid(m)
+		if !ok {
 			http.Error(writer, err.Error(), http.StatusBadRequest)
 			return
 		}
@@ -404,4 +414,32 @@ func (ms MetricsServer) flushToDisk() {
 
 func (ms MetricsServer) FlushToDisk() {
 	ms.flushToDisk()
+}
+
+func (ms MetricsServer) hashIsValid(m handlers.Metrics) (bool, error) {
+	// Do not check hash if server hash key is empty
+	if !pkg.StringNotEmpry(ms.hashKey) {
+		return true, nil
+	}
+
+	if !pkg.StringNotEmpry(m.Hash) {
+		return true, nil
+	}
+
+	hash, err := m.ComputeHash(ms.hashKey)
+	if err != nil {
+		return false, err
+	}
+	if m.Hash != hash {
+		return false, fmt.Errorf("invalid metric hash")
+	}
+	return true, nil
+}
+
+func (ms MetricsServer) writeHash(h *handlers.Metrics) error {
+	if pkg.StringNotEmpry(ms.hashKey) {
+		return h.HashMetric(ms.hashKey)
+	}
+
+	return nil
 }
