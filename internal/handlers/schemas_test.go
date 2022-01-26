@@ -2,10 +2,13 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/OmAsana/yapraktikum/internal/pkg"
 )
 
 func TestMetrics(t *testing.T) {
@@ -75,4 +78,19 @@ func TestMetrics(t *testing.T) {
 
 	})
 
+}
+
+func TestMetrics_ComputeHash(t *testing.T) {
+	key := "blabla"
+	m := Metrics{
+		ID:    "gauge",
+		MType: "gauge",
+		Delta: nil,
+		Value: pkg.PointerFloat(12),
+		Hash:  "",
+	}
+
+	fmt.Println(m.ComputeHash(key))
+	fmt.Println(m.ComputeHash(key))
+	fmt.Println(m.ComputeHash(key))
 }

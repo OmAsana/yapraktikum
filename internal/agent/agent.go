@@ -171,6 +171,14 @@ func (a Agent) reportAPIv2() {
 			if !open {
 				return
 			}
+			if a.cfg.HashKey != "" {
+				err := m.HashMetric(a.cfg.HashKey)
+				if err != nil {
+					fmt.Println(err)
+					continue
+				}
+			}
+
 			var buf bytes.Buffer
 			err := json.NewEncoder(&buf).Encode(m)
 			if err != nil {

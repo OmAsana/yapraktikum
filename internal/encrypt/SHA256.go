@@ -14,14 +14,18 @@ func createSHA256Hash(key string) []byte {
 	return hasher.Sum(nil)
 }
 
-func EncryptSHA256(msg string, key string) (string, error) {
-	data, err := hex.DecodeString(msg)
-	if err != nil {
-		return "", err
-	}
+func EncryptSHA256(msg string, key string) string {
+	//data, err := hex.DecodeString(msg)
+	//if err != nil {
+	//	return "", err
+	//}
 	h := hmac.New(sha256.New, []byte(key))
-	h.Write(data)
-	return hex.EncodeToString(h.Sum(nil)), nil
+	h.Write([]byte(msg))
+	return hex.EncodeToString(h.Sum(nil))
+}
+
+func HashesEqual(left, right string) bool {
+	return hmac.Equal([]byte(left), []byte(right))
 }
 
 func Encrypt(data []byte, key string) (string, error) {

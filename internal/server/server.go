@@ -12,6 +12,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 
+	"github.com/OmAsana/yapraktikum/internal/encrypt"
 	"github.com/OmAsana/yapraktikum/internal/handlers"
 	"github.com/OmAsana/yapraktikum/internal/metrics"
 	"github.com/OmAsana/yapraktikum/internal/pkg"
@@ -153,11 +154,13 @@ func (ms MetricsServer) Update() http.HandlerFunc {
 		var m handlers.Metrics
 		err := json.NewDecoder(request.Body).Decode(&m)
 		if err != nil {
+			fmt.Println("json error")
 			http.Error(writer, err.Error(), http.StatusBadRequest)
 			return
 		}
 		ok, err := ms.hashIsValid(m)
 		if !ok {
+			fmt.Println("Hash is ok")
 			http.Error(writer, err.Error(), http.StatusBadRequest)
 			return
 		}
@@ -428,9 +431,10 @@ func (ms MetricsServer) hashIsValid(m handlers.Metrics) (bool, error) {
 
 	hash, err := m.ComputeHash(ms.hashKey)
 	if err != nil {
+		fmt.Println(err)
 		return false, err
 	}
-	if m.Hash != hash {
+	if encrypt.HashesEqual(m.Hash, hash) {
 		return false, fmt.Errorf("invalid metric hash")
 	}
 	return true, nil
