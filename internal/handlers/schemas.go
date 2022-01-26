@@ -48,7 +48,7 @@ func (m *Metrics) ComputeHash(key string) (string, error) {
 	var encrypted string
 
 	if m.Delta != nil {
-		encrypted = encrypt.EncryptSHA256(fmt.Sprintf("%s:counter:%d", m.ID, m.Delta), key)
+		encrypted = encrypt.EncryptSHA256(fmt.Sprintf("%s:counter:%d", m.ID, *m.Delta), key)
 	}
 
 	if m.Value != nil {
