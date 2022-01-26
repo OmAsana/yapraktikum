@@ -26,7 +26,7 @@ func Encrypt(data []byte, key string) (string, error) {
 	return hex.EncodeToString(encrypted), nil
 }
 
-func Decrypt(data string, key string) (string, error) {
+func Decrypt(encrypted string, key string) (string, error) {
 	sha256Key := createSHA256Hash(key)
 	gcm, err := newGCM(sha256Key)
 	if err != nil {
@@ -34,11 +34,15 @@ func Decrypt(data string, key string) (string, error) {
 	}
 
 	nonce := nonceFromKey(sha256Key, gcm)
-	decrypted, err := gcm.Open(nil, nonce, []byte(data), nil)
+	d, err := hex.DecodeString(encrypted)
 	if err != nil {
 		return "", err
 	}
-	return hex.EncodeToString(decrypted), err
+	decrypted, err := gcm.Open(nil, nonce, d, nil)
+	if err != nil {
+		return "", err
+	}
+	return string(decrypted), err
 
 }
 
