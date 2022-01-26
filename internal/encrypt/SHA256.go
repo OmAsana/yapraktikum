@@ -20,10 +20,6 @@ func EncryptSHA256(msg string, key string) string {
 	return hex.EncodeToString(h.Sum(nil))
 }
 
-func HashesEqual(left, right string) bool {
-	return hmac.Equal([]byte(left), []byte(right))
-}
-
 func Encrypt(data []byte, key string) (string, error) {
 	sha256Key := createSHA256Hash(key)
 	gcm, err := newGCM(sha256Key)

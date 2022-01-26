@@ -12,7 +12,6 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 
-	"github.com/OmAsana/yapraktikum/internal/encrypt"
 	"github.com/OmAsana/yapraktikum/internal/handlers"
 	"github.com/OmAsana/yapraktikum/internal/metrics"
 	"github.com/OmAsana/yapraktikum/internal/pkg"
@@ -431,7 +430,7 @@ func (ms MetricsServer) hashIsValid(m handlers.Metrics) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	if encrypt.HashesEqual(m.Hash, hash) {
+	if m.Hash != hash {
 		return false, fmt.Errorf("invalid metric hash")
 	}
 	return true, nil
