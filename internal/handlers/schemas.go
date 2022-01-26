@@ -45,7 +45,6 @@ func (m *Metrics) HashMetric(key string) error {
 }
 
 func (m *Metrics) ComputeHash(key string) (string, error) {
-	var err error
 	var encrypted string
 
 	if m.Delta != nil {
@@ -53,11 +52,7 @@ func (m *Metrics) ComputeHash(key string) (string, error) {
 	}
 
 	if m.Value != nil {
-		encrypted = encrypt.EncryptSHA256(fmt.Sprintf("%s:gauge:%d", m.ID, m.Value), key)
-	}
-
-	if err != nil {
-		return "", err
+		encrypted = encrypt.EncryptSHA256(fmt.Sprintf("%s:gauge:%f", m.ID, *m.Value), key)
 	}
 
 	if encrypted == "" {

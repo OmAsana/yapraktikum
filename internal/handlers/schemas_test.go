@@ -89,8 +89,9 @@ func TestMetrics_ComputeHash(t *testing.T) {
 		Value: pkg.PointerFloat(12),
 		Hash:  "",
 	}
+	m2 := m
 
-	fmt.Println(m.ComputeHash(key))
+	fmt.Println(m2.ComputeHash(key))
 	fmt.Println(m.ComputeHash(key))
 	fmt.Println(m.ComputeHash(key))
 }
