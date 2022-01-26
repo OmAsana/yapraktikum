@@ -49,11 +49,11 @@ func (m *Metrics) ComputeHash(key string) (string, error) {
 	var encrypted string
 
 	if m.Delta != nil {
-		encrypted, err = encrypt.Encrypt([]byte(fmt.Sprintf("%s:counter:%d", m.ID, m.Delta)), key)
+		encrypted, err = encrypt.EncryptSHA256(string(fmt.Sprintf("%s:counter:%d", m.ID, m.Delta)), key)
 	}
 
 	if m.Value != nil {
-		encrypted, err = encrypt.Encrypt([]byte(fmt.Sprintf("%s:gauer:%d", m.ID, m.Value)), key)
+		encrypted, err = encrypt.EncryptSHA256(string([]byte(fmt.Sprintf("%s:gauer:%d", m.ID, m.Value))), key)
 	}
 
 	if err != nil {

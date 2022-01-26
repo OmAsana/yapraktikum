@@ -3,6 +3,7 @@ package encrypt
 import (
 	"crypto/aes"
 	"crypto/cipher"
+	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
 )
@@ -11,6 +12,16 @@ func createSHA256Hash(key string) []byte {
 	hasher := sha256.New()
 	hasher.Write([]byte(key))
 	return hasher.Sum(nil)
+}
+
+func EncryptSHA256(msg string, key string) (string, error) {
+	data, err := hex.DecodeString(msg)
+	if err != nil {
+		return "", err
+	}
+	h := hmac.New(sha256.New, []byte(key))
+	h.Write(data)
+	return hex.EncodeToString(h.Sum(nil)), nil
 }
 
 func Encrypt(data []byte, key string) (string, error) {
