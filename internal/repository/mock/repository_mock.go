@@ -87,11 +87,8 @@ func (r *RepositoryMock) flushToDiskRoutine() {
 		}()
 	} else {
 		go func() {
-			for {
-				select {
-				case <-r.storeSignal:
-					r.flushToDisk()
-				}
+			for range r.storeSignal {
+				r.flushToDisk()
 			}
 		}()
 	}

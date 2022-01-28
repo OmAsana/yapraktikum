@@ -315,7 +315,6 @@ func (ms MetricsServer) ReturnCurrentMetrics() http.HandlerFunc {
 
 func (ms MetricsServer) FlushToDisk() {
 	// TODO: Remove this redundant method
-	return
 }
 
 func (ms MetricsServer) hashIsValid(m handlers.Metrics) (bool, error) {
