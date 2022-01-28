@@ -56,7 +56,7 @@ func setupRoutes(srv *MetricsServer) {
 	srv.Use(compressorHandler)
 
 	srv.Get("/", srv.ReturnCurrentMetrics())
-	srv.Get("/", srv.Ping())
+	srv.Get("/ping", srv.Ping())
 	srv.Get("/value/{metricType}/{metricName}", srv.GetMetric())
 
 	srv.Post("/value/", srv.Value())
