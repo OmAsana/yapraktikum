@@ -20,4 +20,5 @@ type MetricsRepository interface {
 	StoreGauge(gauge metrics.Gauge) RepositoryError
 	RetrieveGauge(name string) (metrics.Gauge, RepositoryError)
 	ListStoredMetrics() ([]metrics.Gauge, []metrics.Counter, RepositoryError)
+	Ping() bool
 }

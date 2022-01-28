@@ -11,7 +11,7 @@ import (
 	"github.com/OmAsana/yapraktikum/internal/repository"
 )
 
-var _ repository.MetricsRepository = &RepositoryMock{}
+var _ repository.MetricsRepository = (*RepositoryMock)(nil)
 
 type RepositoryMock struct {
 	sync.RWMutex
@@ -26,6 +26,10 @@ type RepositoryMock struct {
 	restore       bool
 
 	storeSignal chan struct{}
+}
+
+func (r *RepositoryMock) Ping() bool {
+	return false
 }
 
 func NewDefaultInMemoryRepo() *RepositoryMock {

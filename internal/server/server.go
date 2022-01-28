@@ -56,6 +56,7 @@ func setupRoutes(srv *MetricsServer) {
 	srv.Use(compressorHandler)
 
 	srv.Get("/", srv.ReturnCurrentMetrics())
+	srv.Get("/", srv.Ping())
 	srv.Get("/value/{metricType}/{metricName}", srv.GetMetric())
 
 	srv.Post("/value/", srv.Value())
@@ -343,4 +344,17 @@ func (ms MetricsServer) writeHash(h *handlers.Metrics) error {
 	}
 
 	return nil
+}
+
+func (ms MetricsServer) Ping() http.HandlerFunc {
+	return func(writer http.ResponseWriter, request *http.Request) {
+		if ms.db.Ping() {
+			writer.WriteHeader(http.StatusOK)
+			return
+		}
+
+		http.Error(writer, "db is down", http.StatusInternalServerError)
+
+	}
+
 }
