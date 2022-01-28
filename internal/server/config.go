@@ -14,12 +14,14 @@ var (
 	DefaultStoreFile     = "/tmp/devops-metrics-db.json"
 	DefaultRestore       = true
 	DefaultHashKey       = ""
+	DefaultDatabaseDSN   = ""
 
 	DefaultConfig = Config{
 		Address:       DefaultAddress,
 		StoreInterval: DefaultStoreInterval,
 		StoreFile:     DefaultStoreFile,
 		Restore:       DefaultRestore,
+		DatabaseDSN:   DefaultDatabaseDSN,
 	}
 )
 
@@ -29,6 +31,7 @@ type Config struct {
 	StoreFile     string        `env:"STORE_FILE"`
 	Restore       bool          `env:"RESTORE"`
 	HashKey       string        `env:"KEY"`
+	DatabaseDSN   string        `env:"DATABASE_DSN"`
 }
 
 func InitConfig() (*Config, error) {
@@ -53,6 +56,7 @@ func (c *Config) initCmdFlagsWithArgs(args []string) error {
 	storeInterval := command.Duration("i", DefaultStoreInterval, "Store interval")
 	storeFile := command.String("f", DefaultStoreFile, "Store file")
 	hashKey := command.String("k", DefaultHashKey, "Hash key")
+	databaseDSN := command.String("d", DefaultDatabaseDSN, "Postgre database connection string")
 
 	if err := command.Parse(args); err != nil {
 		return err
@@ -63,6 +67,7 @@ func (c *Config) initCmdFlagsWithArgs(args []string) error {
 	c.StoreFile = *storeFile
 	c.StoreInterval = *storeInterval
 	c.HashKey = *hashKey
+	c.DatabaseDSN = *databaseDSN
 
 	return nil
 }

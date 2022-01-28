@@ -15,25 +15,27 @@ import (
 	"github.com/OmAsana/yapraktikum/internal/handlers"
 	"github.com/OmAsana/yapraktikum/internal/metrics"
 	"github.com/OmAsana/yapraktikum/internal/pkg"
+	"github.com/OmAsana/yapraktikum/internal/repository"
+	"github.com/OmAsana/yapraktikum/internal/repository/mock"
 )
 
 type MetricsServer struct {
 	*chi.Mux
-	db            MetricsRepository
+	db            repository.MetricsRepository
 	storeInterval time.Duration
 	storeFile     string
 	restore       bool
-	cacherReader  *cacherReader
-	cacherWriter  Cacher
+	cacherReader  *mock.CacherReader
+	cacherWriter  mock.Cacher
 	hashKey       string
 }
 
-func NewMetricsServer(db MetricsRepository, opts ...Options) (*MetricsServer, error) {
+func NewMetricsServer(db repository.MetricsRepository, opts ...Options) (*MetricsServer, error) {
 	srv := &MetricsServer{
 		db:            db,
 		Mux:           chi.NewMux(),
 		storeInterval: 0 * time.Second,
-		storeFile:     "0",
+		storeFile:     "",
 		restore:       false,
 	}
 
@@ -41,21 +43,6 @@ func NewMetricsServer(db MetricsRepository, opts ...Options) (*MetricsServer, er
 		opt(srv)
 	}
 
-	if srv.storeFile != "" {
-		if srv.restore {
-			srv.restoreData()
-		}
-
-		cacheWriter, err := NewCacherWriter(srv.storeFile)
-		if err != nil {
-			return nil, err
-		}
-		srv.cacherWriter = cacheWriter
-	} else {
-		srv.cacherWriter = NewNoopCacher()
-	}
-
-	srv.periodicDataWriter()
 	setupRoutes(srv)
 
 	return srv, nil
@@ -184,7 +171,6 @@ func (ms MetricsServer) saveMetric(writer http.ResponseWriter, m handlers.Metric
 			http.Error(writer, "internal error", http.StatusInternalServerError)
 			return
 		}
-		ms.flushToDisk()
 		writer.WriteHeader(http.StatusOK)
 		return
 	case "gauge":
@@ -203,7 +189,6 @@ func (ms MetricsServer) saveMetric(writer http.ResponseWriter, m handlers.Metric
 			http.Error(writer, "internal error", http.StatusInternalServerError)
 			return
 		}
-		ms.flushToDisk()
 		writer.WriteHeader(http.StatusOK)
 		return
 	default:
@@ -328,92 +313,9 @@ func (ms MetricsServer) ReturnCurrentMetrics() http.HandlerFunc {
 	}
 }
 
-func (ms MetricsServer) restoreData() error {
-	reader, err := NewCacherReader(ms.storeFile)
-	if err != nil {
-		return err
-	}
-	metricsFromDisk, err := reader.ReadMetricsFromCache()
-	if err != nil && err != io.EOF {
-		fmt.Println("restore data")
-		fmt.Println(err)
-		return err
-	}
-	if err == io.EOF {
-		return nil
-	}
-	for _, m := range metricsFromDisk {
-		switch m.MType {
-		case "counter":
-
-			c := metrics.Counter{
-				Name:  m.ID,
-				Value: *m.Delta,
-			}
-
-			err := ms.db.StoreCounter(c)
-			if err != nil {
-				return err
-			}
-		case "gauge":
-
-			g := metrics.Gauge{
-				Name:  m.ID,
-				Value: *m.Value,
-			}
-			err := ms.db.StoreGauge(g)
-			if err != nil {
-				return err
-			}
-		}
-	}
-	return nil
-}
-
-func (ms MetricsServer) writeMetricToFile(m *handlers.Metrics) {
-	if ms.storeInterval > 0 {
-		return
-	}
-	ms.flushToDisk()
-}
-
-func (ms MetricsServer) periodicDataWriter() {
-	if ms.storeInterval > 0 {
-		go func() {
-			ticker := time.NewTicker(ms.storeInterval)
-			for range ticker.C {
-				ms.flushToDisk()
-			}
-		}()
-	}
-}
-
-func (ms MetricsServer) flushToDisk() {
-	gauges, couters, err := ms.db.ListStoredMetrics()
-	if err != nil {
-		fmt.Println(err)
-	}
-	flushMetrics := []handlers.Metrics{}
-	for _, g := range gauges {
-		m := metrics.GaugeToHandlerScheme(g)
-		flushMetrics = append(flushMetrics, m)
-
-	}
-
-	for _, c := range couters {
-		m := metrics.CounterToHandlerScheme(c)
-		flushMetrics = append(flushMetrics, m)
-
-	}
-
-	err = ms.cacherWriter.WriteMultipleMetrics(&flushMetrics)
-	if err != nil {
-		fmt.Println(err)
-	}
-}
-
 func (ms MetricsServer) FlushToDisk() {
-	ms.flushToDisk()
+	// TODO: Remove this redundant method
+	return
 }
 
 func (ms MetricsServer) hashIsValid(m handlers.Metrics) (bool, error) {

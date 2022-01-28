@@ -8,6 +8,7 @@ import (
 	"sync"
 	"syscall"
 
+	"github.com/OmAsana/yapraktikum/internal/repository/mock"
 	"github.com/OmAsana/yapraktikum/internal/server"
 )
 
@@ -18,12 +19,16 @@ func startHTTPServer(wg *sync.WaitGroup) (*http.Server, error) {
 		return nil, err
 	}
 
-	repo := server.NewRepositoryMock()
+	repo, err := mock.NewInMemoryRepo(
+		mock.WithRestore(cfg.Restore),
+		mock.WithStoreFile(cfg.StoreFile),
+		mock.WithStoreInterval(cfg.StoreInterval),
+	)
+	if err != nil {
+		return nil, err
+	}
 	handler, err := server.NewMetricsServer(
 		repo,
-		server.WithRestore(cfg.Restore),
-		server.WithStoreFile(cfg.StoreFile),
-		server.WithStoreInterval(cfg.StoreInterval),
 		server.WithHashKey(cfg.HashKey),
 	)
 	if err != nil {

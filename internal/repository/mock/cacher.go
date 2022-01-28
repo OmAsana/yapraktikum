@@ -1,4 +1,4 @@
-package server
+package mock
 
 import (
 	"encoding/json"
@@ -46,35 +46,35 @@ func (c *cacherWriter) Close() error {
 	return c.file.Close()
 }
 
-type cacherReader struct {
+type CacherReader struct {
 	file    *os.File
 	decoder *json.Decoder
 }
 
-func NewCacherReader(fileName string) (*cacherReader, error) {
+func NewCacherReader(fileName string) (*CacherReader, error) {
 	file, err := os.OpenFile(fileName, os.O_RDONLY|os.O_CREATE, 0777)
 	if err != nil {
 		return nil, err
 	}
 
-	return &cacherReader{
+	return &CacherReader{
 		file:    file,
 		decoder: json.NewDecoder(file),
 	}, nil
 }
 
-func (c *cacherReader) Close() error {
+func (c *CacherReader) Close() error {
 	return c.file.Close()
 
 }
 
-func (c *cacherReader) ReadMetricsFromCache() ([]handlers.Metrics, error) {
+func (c *CacherReader) ReadMetricsFromCache() ([]handlers.Metrics, error) {
 	var m []handlers.Metrics
 	err := c.decoder.Decode(&m)
 	return m, err
 }
 
-func (c *cacherReader) TrucateFile() error {
+func (c *CacherReader) TruncateFile() error {
 	return os.Truncate(c.file.Name(), 0)
 }
 
@@ -83,12 +83,12 @@ var _ Cacher = (*noopCacher)(nil)
 type noopCacher struct {
 }
 
-func (n *noopCacher) WriteMultipleMetrics(m *[]handlers.Metrics) error {
-	return nil
-}
-
 func NewNoopCacher() *noopCacher {
 	return &noopCacher{}
+}
+
+func (n *noopCacher) WriteMultipleMetrics(_ *[]handlers.Metrics) error {
+	return nil
 }
 
 func (n *noopCacher) WriteSingleMetric(_ *handlers.Metrics) error {
