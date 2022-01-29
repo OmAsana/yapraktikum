@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/caarlos0/env/v6"
+
+	"github.com/OmAsana/yapraktikum/internal/logging"
 )
 
 var (
@@ -68,6 +70,7 @@ func (c *Config) initCmdFlagsWithArgs(args []string) error {
 	c.StoreInterval = *storeInterval
 	c.HashKey = *hashKey
 	c.DatabaseDSN = *databaseDSN
+	logging.Log.S().Infof("Config from flags: %+v", c)
 
 	return nil
 }
@@ -76,5 +79,6 @@ func (c *Config) initEnvArgs() error {
 	if err := env.Parse(c); err != nil {
 		return err
 	}
+	logging.Log.S().Infof("Config after envs vars: %+v", c)
 	return nil
 }
