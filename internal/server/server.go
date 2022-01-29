@@ -13,6 +13,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 
 	"github.com/OmAsana/yapraktikum/internal/handlers"
+	"github.com/OmAsana/yapraktikum/internal/logging"
 	"github.com/OmAsana/yapraktikum/internal/metrics"
 	"github.com/OmAsana/yapraktikum/internal/pkg"
 	"github.com/OmAsana/yapraktikum/internal/repository"
@@ -94,7 +95,7 @@ func (ms MetricsServer) Value() http.HandlerFunc {
 		case "counter":
 			c, err := ms.db.RetrieveCounter(m.ID)
 			if err != nil {
-				fmt.Printf("Not found metric %+v", m)
+				logging.Log.S().Infof("Not found metric %+v", m)
 				http.Error(writer, err.Error(), http.StatusNotFound)
 				return
 			}
@@ -104,7 +105,7 @@ func (ms MetricsServer) Value() http.HandlerFunc {
 		case "gauge":
 			g, err := ms.db.RetrieveGauge(m.ID)
 			if err != nil {
-				fmt.Printf("Not found metric %+v", m)
+				logging.Log.S().Infof("Not found metric %+v", m)
 				http.Error(writer, err.Error(), http.StatusNotFound)
 				return
 			}
@@ -352,9 +353,6 @@ func (ms MetricsServer) Ping() http.HandlerFunc {
 			writer.WriteHeader(http.StatusOK)
 			return
 		}
-
 		http.Error(writer, "db is down", http.StatusInternalServerError)
-
 	}
-
 }

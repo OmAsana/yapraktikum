@@ -8,6 +8,7 @@ import (
 	"sync"
 	"syscall"
 
+	"github.com/OmAsana/yapraktikum/internal/logging"
 	"github.com/OmAsana/yapraktikum/internal/repository"
 	"github.com/OmAsana/yapraktikum/internal/repository/mock"
 	"github.com/OmAsana/yapraktikum/internal/repository/sql"
@@ -20,6 +21,7 @@ func startHTTPServer(wg *sync.WaitGroup) (*http.Server, error) {
 	if err != nil {
 		return nil, err
 	}
+	logging.Log.S().Infof("Config: %+v", cfg)
 
 	var repo repository.MetricsRepository
 	if cfg.DatabaseDSN != "" {
