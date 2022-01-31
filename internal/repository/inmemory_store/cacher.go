@@ -1,4 +1,4 @@
-package mock
+package inmemory_store
 
 import (
 	"encoding/json"

@@ -19,12 +19,12 @@ import (
 	"github.com/OmAsana/yapraktikum/internal/handlers"
 	"github.com/OmAsana/yapraktikum/internal/metrics"
 	"github.com/OmAsana/yapraktikum/internal/repository"
-	"github.com/OmAsana/yapraktikum/internal/repository/mock"
+	"github.com/OmAsana/yapraktikum/internal/repository/inmemory_store"
 )
 
-func SetupRepo(t *testing.T, opts ...mock.Options) repository.MetricsRepository {
+func SetupRepo(t *testing.T, opts ...inmemory_store.Options) repository.MetricsRepository {
 	t.Helper()
-	repo, err := mock.NewInMemoryRepo(opts...)
+	repo, err := inmemory_store.NewInMemoryRepo(opts...)
 	assert.NoError(t, err)
 	return repo
 }
@@ -605,8 +605,8 @@ func TestMetricsServer_hashIsValid(t *testing.T) {
 		storeInterval time.Duration
 		storeFile     string
 		restore       bool
-		cacherReader  *mock.CacherReader
-		cacherWriter  mock.Cacher
+		cacherReader  *inmemory_store.CacherReader
+		cacherWriter  inmemory_store.Cacher
 		hashKey       string
 	}
 	type args struct {

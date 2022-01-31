@@ -1,4 +1,4 @@
-package mock
+package inmemory_store
 
 import (
 	"fmt"
@@ -11,9 +11,9 @@ import (
 	"github.com/OmAsana/yapraktikum/internal/repository"
 )
 
-var _ repository.MetricsRepository = (*RepositoryMock)(nil)
+var _ repository.MetricsRepository = (*InMemoryStore)(nil)
 
-type RepositoryMock struct {
+type InMemoryStore struct {
 	sync.RWMutex
 	gauges   map[string]float64
 	counters map[string]int64
@@ -28,7 +28,7 @@ type RepositoryMock struct {
 	storeSignal chan struct{}
 }
 
-func (r *RepositoryMock) WriteBulkGauges(gauges []metrics.Gauge) error {
+func (r *InMemoryStore) WriteBulkGauges(gauges []metrics.Gauge) error {
 	for _, g := range gauges {
 		if err := r.StoreGauge(g); err != nil {
 			return err
@@ -37,7 +37,7 @@ func (r *RepositoryMock) WriteBulkGauges(gauges []metrics.Gauge) error {
 	return nil
 }
 
-func (r *RepositoryMock) WriteBulkCounters(counters []metrics.Counter) error {
+func (r *InMemoryStore) WriteBulkCounters(counters []metrics.Counter) error {
 	for _, c := range counters {
 		if err := r.StoreCounter(c); err != nil {
 			return err
@@ -46,12 +46,12 @@ func (r *RepositoryMock) WriteBulkCounters(counters []metrics.Counter) error {
 	return nil
 }
 
-func (r *RepositoryMock) Ping() bool {
+func (r *InMemoryStore) Ping() bool {
 	return false
 }
 
-func NewDefaultInMemoryRepo() *RepositoryMock {
-	repo := &RepositoryMock{
+func NewDefaultInMemoryRepo() *InMemoryStore {
+	repo := &InMemoryStore{
 		gauges:   make(map[string]float64),
 		counters: make(map[string]int64),
 	}
@@ -59,8 +59,8 @@ func NewDefaultInMemoryRepo() *RepositoryMock {
 	return repo
 }
 
-func NewInMemoryRepo(opts ...Options) (*RepositoryMock, error) {
-	repo := &RepositoryMock{
+func NewInMemoryRepo(opts ...Options) (*InMemoryStore, error) {
+	repo := &InMemoryStore{
 		gauges:   make(map[string]float64),
 		counters: make(map[string]int64),
 
@@ -94,7 +94,7 @@ func NewInMemoryRepo(opts ...Options) (*RepositoryMock, error) {
 	return repo, nil
 }
 
-func (r *RepositoryMock) flushToDiskRoutine() {
+func (r *InMemoryStore) flushToDiskRoutine() {
 	if r.storeInterval > 0 {
 		go func() {
 			ticker := time.NewTicker(r.storeInterval)
@@ -117,7 +117,7 @@ func (r *RepositoryMock) flushToDiskRoutine() {
 
 }
 
-func (r *RepositoryMock) RetrieveCounter(name string) (metrics.Counter, repository.RepositoryError) {
+func (r *InMemoryStore) RetrieveCounter(name string) (metrics.Counter, repository.RepositoryError) {
 	r.RLock()
 	defer r.RUnlock()
 	if v, ok := r.counters[name]; ok {
@@ -129,7 +129,7 @@ func (r *RepositoryMock) RetrieveCounter(name string) (metrics.Counter, reposito
 	return metrics.Counter{}, repository.ErrorCounterNotFound
 }
 
-func (r *RepositoryMock) RetrieveGauge(name string) (metrics.Gauge, repository.RepositoryError) {
+func (r *InMemoryStore) RetrieveGauge(name string) (metrics.Gauge, repository.RepositoryError) {
 	r.RLock()
 	defer r.RUnlock()
 	if v, ok := r.gauges[name]; ok {
@@ -141,7 +141,7 @@ func (r *RepositoryMock) RetrieveGauge(name string) (metrics.Gauge, repository.R
 	return metrics.Gauge{}, repository.ErrorGaugeNotFound
 }
 
-func (r *RepositoryMock) StoreCounter(counter metrics.Counter) repository.RepositoryError {
+func (r *InMemoryStore) StoreCounter(counter metrics.Counter) repository.RepositoryError {
 	r.Lock()
 	defer r.Unlock()
 	err := counter.IsValid()
@@ -159,14 +159,14 @@ func (r *RepositoryMock) StoreCounter(counter metrics.Counter) repository.Reposi
 	return nil
 }
 
-func (r *RepositoryMock) StoreGauge(gauge metrics.Gauge) repository.RepositoryError {
+func (r *InMemoryStore) StoreGauge(gauge metrics.Gauge) repository.RepositoryError {
 	r.Lock()
 	defer r.Unlock()
 	r.gauges[gauge.Name] = gauge.Value
 	return nil
 }
 
-func (r *RepositoryMock) ListStoredMetrics() ([]metrics.Gauge, []metrics.Counter, repository.RepositoryError) {
+func (r *InMemoryStore) ListStoredMetrics() ([]metrics.Gauge, []metrics.Counter, repository.RepositoryError) {
 	var gauges []metrics.Gauge
 	var couter []metrics.Counter
 
@@ -189,7 +189,7 @@ func (r *RepositoryMock) ListStoredMetrics() ([]metrics.Gauge, []metrics.Counter
 	return gauges, couter, nil
 }
 
-func (r *RepositoryMock) restoreData() error {
+func (r *InMemoryStore) restoreData() error {
 	reader, err := NewCacherReader(r.storeFile)
 	if err != nil {
 		return err
@@ -228,7 +228,7 @@ func (r *RepositoryMock) restoreData() error {
 	}
 	return nil
 }
-func (r *RepositoryMock) flushToDisk() {
+func (r *InMemoryStore) flushToDisk() {
 	gauges, couters, err := r.ListStoredMetrics()
 	if err != nil {
 		fmt.Println(err)
