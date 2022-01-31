@@ -3,7 +3,6 @@ package sql
 import (
 	"context"
 	"database/sql"
-	"strings"
 	"time"
 
 	_ "github.com/jackc/pgx/v4/stdlib"
@@ -18,6 +17,35 @@ var _ repository.MetricsRepository = (*Repository)(nil)
 type Repository struct {
 	db  *sql.DB
 	log *logging.Logger
+}
+
+func NewRepository(dbn string, restore bool, opts ...Option) (*Repository, error) {
+	db, err := sql.Open("pgx", dbn)
+	if err != nil {
+		return nil, err
+	}
+	r := &Repository{
+		db:  db,
+		log: logging.NewNoop(),
+	}
+
+	for _, opt := range opts {
+		if err := opt(r); err != nil {
+			return nil, err
+		}
+	}
+
+	if !restore {
+		if err := r.dropDatabase(); err != nil {
+			return nil, err
+		}
+	}
+
+	if err := r.initTable(); err != nil {
+		return nil, err
+	}
+
+	return r, nil
 }
 
 func (r *Repository) WriteBulkCounters(counters []metrics.Counter) error {
@@ -73,52 +101,17 @@ func (r *Repository) WriteBulkGauges(gauges []metrics.Gauge) error {
 	return nil
 }
 
-func NewRepository(dbn string, restore bool, opts ...Option) (*Repository, error) {
-	db, err := sql.Open("pgx", dbn)
-	if err != nil {
-		return nil, err
-	}
-	r := &Repository{
-		db:  db,
-		log: logging.NewNoop(),
-	}
-
-	for _, opt := range opts {
-		if err := opt(r); err != nil {
-			return nil, err
-		}
-	}
-
-	if !restore {
-		if err := r.dropDatabase(); err != nil {
-			return nil, err
-		}
-	}
-
-	if err := r.initTable(); err != nil {
-		return nil, err
-	}
-
-	return r, nil
-}
-
 func (r *Repository) initTable() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
 	_, err := r.db.ExecContext(ctx, "CREATE TABLE IF NOT EXISTS gauges ( name varchar(40) PRIMARY KEY, value double precision NOT NULL)")
 	if err != nil {
-		r.log.S().Errorf("Could not init table: %s", err)
-		if !strings.Contains(err.Error(), `relation "gauges" already exists`) {
-			return err
-		}
+		return err
 	}
 
 	_, err = r.db.ExecContext(ctx, "CREATE TABLE IF NOT EXISTS counters ( name varchar(40) PRIMARY KEY, value numeric NOT NULL)")
 	if err != nil {
-		r.log.S().Errorf("Could not init table: %s", err)
-		if !strings.Contains(err.Error(), `relation "counters" already exists`) {
-			return err
-		}
+		return err
 	}
 
 	return nil
