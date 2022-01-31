@@ -15,7 +15,7 @@ var (
 	DefaultRestore       = true
 	DefaultHashKey       = ""
 	DefaultDatabaseDSN   = ""
-	DefaultDebug         = false
+	DefaultLogLevel      = "info"
 
 	DefaultConfig = Config{
 		Address:       DefaultAddress,
@@ -23,7 +23,7 @@ var (
 		StoreFile:     DefaultStoreFile,
 		Restore:       DefaultRestore,
 		DatabaseDSN:   DefaultDatabaseDSN,
-		Debug:         DefaultDebug,
+		LogLevel:      DefaultLogLevel,
 	}
 )
 
@@ -34,7 +34,7 @@ type Config struct {
 	Restore       bool          `env:"RESTORE"`
 	HashKey       string        `env:"KEY"`
 	DatabaseDSN   string        `env:"DATABASE_DSN"`
-	Debug         bool          `env:"DEBUG"`
+	LogLevel      string        `env:"LOG_LEVEL"`
 }
 
 func InitConfig() (*Config, error) {
@@ -56,11 +56,11 @@ func (c *Config) initCmdFlagsWithArgs(args []string) error {
 
 	address := command.String("a", DefaultAddress, "Listen on address")
 	restore := command.Bool("r", DefaultRestore, "Restore metrics on startup")
-	debug := command.Bool("debug", DefaultDebug, "Debug output")
 	storeInterval := command.Duration("i", DefaultStoreInterval, "Store interval")
 	storeFile := command.String("f", DefaultStoreFile, "Store file")
 	hashKey := command.String("k", DefaultHashKey, "Hash key")
 	databaseDSN := command.String("d", DefaultDatabaseDSN, "Postgre database connection string")
+	logLevel := command.String("log_level", DefaultLogLevel, "Log level")
 
 	if err := command.Parse(args); err != nil {
 		return err
@@ -72,7 +72,7 @@ func (c *Config) initCmdFlagsWithArgs(args []string) error {
 	c.StoreInterval = *storeInterval
 	c.HashKey = *hashKey
 	c.DatabaseDSN = *databaseDSN
-	c.Debug = *debug
+	c.LogLevel = *logLevel
 
 	return nil
 }

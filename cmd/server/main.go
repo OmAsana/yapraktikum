@@ -6,8 +6,6 @@ import (
 	"os/signal"
 	"syscall"
 
-	"go.uber.org/zap/zapcore"
-
 	"github.com/OmAsana/yapraktikum/internal/logging"
 	"github.com/OmAsana/yapraktikum/internal/repository"
 	"github.com/OmAsana/yapraktikum/internal/repository/inmemorystore"
@@ -40,8 +38,8 @@ func main() {
 		logger.S().Panic("Could not init config: %s", err)
 	}
 
-	if cfg.Debug {
-		logger.SetLogLevel(zapcore.DebugLevel)
+	if err := logger.SetLogLevel(cfg.LogLevel); err != nil {
+		logger.S().Panic(err)
 	}
 
 	repo, err := setupRepo(cfg, logger)

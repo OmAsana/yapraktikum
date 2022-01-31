@@ -21,8 +21,13 @@ func (l *Logger) S() *zap.SugaredLogger {
 
 }
 
-func (l *Logger) SetLogLevel(level zapcore.Level) {
-	l.atomicLevel.SetLevel(level)
+func (l *Logger) SetLogLevel(level string) error {
+	var lvl zapcore.Level
+	if err := lvl.UnmarshalText([]byte(level)); err != nil {
+		return err
+	}
+	l.atomicLevel.SetLevel(lvl)
+	return nil
 }
 
 func NewLogger() *Logger {

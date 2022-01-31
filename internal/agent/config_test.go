@@ -75,6 +75,7 @@ func Test_initCmdFlags(t *testing.T) {
 			ReportInterval: 1 * time.Second,
 			PollInterval:   100 * time.Second,
 			HaskKey:        hashKey,
+			LogLevel:       DefaultLogLevel,
 		}
 		assert.EqualValues(t, targetCfg, cfg)
 

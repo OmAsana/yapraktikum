@@ -20,6 +20,11 @@ func main() {
 		logger.S().Panic(err)
 	}
 
+	err = logger.SetLogLevel(cfg.LogLevel)
+	if err != nil {
+		logger.S().Panic(err)
+	}
+
 	a, err := agent.NewAgentWithOptions(
 		agent.WithAddress(cfg.Address),
 		agent.WithPollInterval(cfg.PollInterval),
