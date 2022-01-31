@@ -12,6 +12,7 @@ var (
 	ErrorCounterNotFound  RepositoryError = fmt.Errorf("counter not found")
 	ErrorCounterIsNoValid RepositoryError = fmt.Errorf("counter is not valid")
 	ErrorGaugeNotFound    RepositoryError = fmt.Errorf("gauge not found")
+	ErrorInternalError    RepositoryError = fmt.Errorf("internal error")
 )
 
 type MetricsRepository interface {
