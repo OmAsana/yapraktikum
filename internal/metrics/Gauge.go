@@ -35,3 +35,10 @@ func GaugeToHandlerScheme(g Gauge) handlers.Metrics {
 		Value: &g.Value,
 	}
 }
+
+func GaugeFromHandler(g handlers.Metrics) Gauge {
+	return Gauge{
+		Name:  g.ID,
+		Value: *g.Value,
+	}
+}

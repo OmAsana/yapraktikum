@@ -61,6 +61,7 @@ func setupRoutes(srv *MetricsServer) {
 	srv.Get("/value/{metricType}/{metricName}", srv.GetMetric())
 
 	srv.Post("/value/", srv.Value())
+	srv.Post("/updates/", srv.Updates())
 
 	srv.Route("/update", func(r chi.Router) {
 		r.Post("/", srv.Update())
@@ -163,12 +164,7 @@ func (ms MetricsServer) saveMetric(writer http.ResponseWriter, m handlers.Metric
 			return
 		}
 
-		c := metrics.Counter{
-			Name:  m.ID,
-			Value: *m.Delta,
-		}
-
-		err := ms.db.StoreCounter(c)
+		err := ms.db.StoreCounter(metrics.CounterFromHandler(m))
 		if err != nil {
 			http.Error(writer, "internal error", http.StatusInternalServerError)
 			return
@@ -181,12 +177,7 @@ func (ms MetricsServer) saveMetric(writer http.ResponseWriter, m handlers.Metric
 			return
 		}
 
-		g := metrics.Gauge{
-			Name:  m.ID,
-			Value: *m.Value,
-		}
-
-		err := ms.db.StoreGauge(g)
+		err := ms.db.StoreGauge(metrics.GaugeFromHandler(m))
 		if err != nil {
 			http.Error(writer, "internal error", http.StatusInternalServerError)
 			return
@@ -354,5 +345,55 @@ func (ms MetricsServer) Ping() http.HandlerFunc {
 			return
 		}
 		http.Error(writer, "db is down", http.StatusInternalServerError)
+	}
+}
+
+func (ms MetricsServer) Updates() http.HandlerFunc {
+	return func(writer http.ResponseWriter, request *http.Request) {
+		if !pkg.Contains(request.Header.Values("Content-Type"), "application/json") {
+			http.Error(writer, "not implemented", http.StatusNotImplemented)
+		}
+
+		var metricList []handlers.Metrics
+		err := json.NewDecoder(request.Body).Decode(&metricList)
+		if err != nil {
+			http.Error(writer, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		for _, metric := range metricList {
+			ok, err := ms.hashIsValid(metric)
+			if !ok {
+				http.Error(writer, err.Error(), http.StatusBadRequest)
+				return
+			}
+		}
+
+		var gauges []metrics.Gauge
+		var counters []metrics.Counter
+
+		for _, m := range metricList {
+			switch m.MType {
+			case "counter":
+				counters = append(counters, metrics.CounterFromHandler(m))
+			case "gauge":
+				gauges = append(gauges, metrics.GaugeFromHandler(m))
+			}
+		}
+
+		err = ms.db.WriteBulkGauges(gauges)
+		if err != nil {
+			logging.Log.S().Error("Bulk write to db failed: ", err)
+			http.Error(writer, "internal error", http.StatusInternalServerError)
+			return
+		}
+
+		err = ms.db.WriteBulkCounters(counters)
+		if err != nil {
+			logging.Log.S().Error("Bulk write to db failed: ", err)
+			http.Error(writer, "internal error", http.StatusInternalServerError)
+			return
+		}
+		writer.WriteHeader(http.StatusOK)
 	}
 }

@@ -20,6 +20,59 @@ type Repository struct {
 	db *sql.DB
 }
 
+func (r *Repository) WriteBulkCounters(counters []metrics.Counter) error {
+	tx, err := r.db.Begin()
+	if err != nil {
+		return err
+	}
+
+	stmt, err := tx.Prepare("INSERT INTO counters (name, value) VALUES ($1, $2) ON CONFLICT (name) DO UPDATE SET value = counters.value + EXCLUDED.value")
+
+	if err != nil {
+		return err
+	}
+
+	for _, v := range counters {
+		if _, err := stmt.Exec(v.Name, v.Value); err != nil {
+			if err = tx.Rollback(); err != nil {
+				return err
+			}
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (r *Repository) WriteBulkGauges(gauges []metrics.Gauge) error {
+	tx, err := r.db.Begin()
+	if err != nil {
+		return err
+	}
+
+	stmt, err := tx.Prepare("INSERT INTO gauges (name, value) VALUES ($1, $2) ON CONFLICT (name) DO UPDATE set VALUE = EXCLUDED.value")
+
+	if err != nil {
+		return err
+	}
+
+	for _, v := range gauges {
+		if _, err := stmt.Exec(v.Name, v.Value); err != nil {
+			if err = tx.Rollback(); err != nil {
+				return err
+			}
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func NewRepository(dbn string, restore bool) (*Repository, error) {
 	db, err := sql.Open("pgx", dbn)
 	if err != nil {

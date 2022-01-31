@@ -29,5 +29,11 @@ func CounterToHandlerScheme(c Counter) handlers.Metrics {
 		Delta: &c.Value,
 		Value: nil,
 	}
+}
 
+func CounterFromHandler(h handlers.Metrics) Counter {
+	return Counter{
+		Name:  h.ID,
+		Value: *h.Delta,
+	}
 }

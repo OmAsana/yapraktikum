@@ -28,6 +28,24 @@ type RepositoryMock struct {
 	storeSignal chan struct{}
 }
 
+func (r *RepositoryMock) WriteBulkGauges(gauges []metrics.Gauge) error {
+	for _, g := range gauges {
+		if err := r.StoreGauge(g); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (r *RepositoryMock) WriteBulkCounters(counters []metrics.Counter) error {
+	for _, c := range counters {
+		if err := r.StoreCounter(c); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (r *RepositoryMock) Ping() bool {
 	return false
 }

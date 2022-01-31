@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/OmAsana/yapraktikum/internal/handlers"
+	"github.com/OmAsana/yapraktikum/internal/logging"
 	"github.com/OmAsana/yapraktikum/internal/metrics"
 )
 
@@ -78,7 +79,8 @@ func (a *Agent) Server(ctx context.Context) {
 			a.registry.Collect()
 		case <-reportTicker.C:
 			//a.report()
-			a.reportAPIv2()
+			//a.reportAPIv2()
+			a.reportAPIv3()
 		case <-ctx.Done():
 			return
 		}
@@ -160,6 +162,62 @@ func (a *Agent) report() {
 		fmt.Println(err)
 	}
 	_ = a.sendRequest(req)
+}
+
+func (a Agent) reportAPIv3() {
+
+	var metrics []*handlers.Metrics
+	for _, gauge := range a.registry.Gauges {
+		metric := &handlers.Metrics{
+			ID:    gauge.Name,
+			MType: "gauge",
+			Value: &gauge.Value,
+		}
+		metrics = append(metrics, metric)
+	}
+	for _, counter := range a.registry.Counters {
+		metric := &handlers.Metrics{
+			ID:    counter.Name,
+			MType: "counter",
+			Delta: &counter.Value,
+		}
+		metrics = append(metrics, metric)
+
+	}
+
+	metrics = append(metrics, &handlers.Metrics{
+		ID:    a.registry.PollCounter.Name,
+		MType: "counter",
+		Delta: &a.registry.PollCounter.Value},
+	)
+
+	if a.cfg.HashKey != "" {
+		for _, m := range metrics {
+			err := m.HashMetric(a.cfg.HashKey)
+			if err != nil {
+				logging.Log.S().Error("Error hashing metric: ", err)
+				return
+			}
+
+		}
+	}
+
+	var buf bytes.Buffer
+	err := json.NewEncoder(&buf).Encode(metrics)
+	if err != nil {
+		logging.Log.S().Error("Error encoding metrics: ", err)
+		return
+	}
+
+	req, err := a.jsonRequest("/updates/", &buf)
+	if err != nil {
+		logging.Log.S().Error("Error preparing request: ", err)
+		return
+	}
+	err = a.sendRequest(req)
+	if err != nil {
+		logging.Log.S().Error("Could not complete request: ", err)
+	}
 }
 
 func (a Agent) reportAPIv2() {
