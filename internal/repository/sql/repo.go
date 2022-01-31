@@ -75,7 +75,7 @@ func (r *Repository) StoreCounter(counter metrics.Counter) repository.Repository
 		Name:  counter.Name,
 		Value: counter.Value,
 	}
-	_, err := r.db.ExecContext(ctx, "INSERT INTO counters (name, value) VALUES ($1, $2) ON CONFLICT (name) DO UPDATE SET value = EXCLUDED.value", c.Name, c.Value)
+	_, err := r.db.ExecContext(ctx, "INSERT INTO counters (name, value) VALUES ($1, $2) ON CONFLICT (name) DO UPDATE SET value = counters.value + EXCLUDED.value", c.Name, c.Value)
 	if err != nil {
 		logging.Log.S().Errorf("Could not insert counter: %s", err)
 		return repository.ErrorInternalError
