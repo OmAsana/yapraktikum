@@ -1,4 +1,4 @@
-package inmemory_store
+package inmemoryStore
 
 import (
 	"encoding/json"

@@ -116,11 +116,7 @@ func (r *Repository) initTable() error {
 
 func (r *Repository) Ping() bool {
 	err := r.db.Ping()
-	if err != nil {
-		return false
-	}
-
-	return true
+	return err == nil
 }
 
 func (r *Repository) StoreCounter(counter metrics.Counter) repository.RepositoryError {
