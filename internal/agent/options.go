@@ -4,11 +4,13 @@ import (
 	"net/url"
 	"strings"
 	"time"
+
+	"github.com/OmAsana/yapraktikum/internal/logging"
 )
 
-type AgentOption func(*Agent) error
+type Option func(*Agent) error
 
-func WithAddress(address string) AgentOption {
+func WithAddress(address string) Option {
 	return func(agent *Agent) error {
 		if !strings.HasPrefix(address, "http://") {
 			address = "http://" + address
@@ -24,16 +26,30 @@ func WithAddress(address string) AgentOption {
 	}
 }
 
-func WithReportInterval(t time.Duration) AgentOption {
+func WithReportInterval(t time.Duration) Option {
 	return func(agent *Agent) error {
 		agent.cfg.ReportInterval = t
 		return nil
 	}
 }
 
-func WithPollInterval(t time.Duration) AgentOption {
+func WithLogger(l *logging.Logger) Option {
+	return func(agent *Agent) error {
+		agent.log = l
+		return nil
+	}
+}
+
+func WithPollInterval(t time.Duration) Option {
 	return func(agent *Agent) error {
 		agent.cfg.PollInterval = t
+		return nil
+	}
+}
+
+func WithHashKey(key string) Option {
+	return func(agent *Agent) error {
+		agent.cfg.HashKey = key
 		return nil
 	}
 }

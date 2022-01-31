@@ -1,9 +1,11 @@
 package pkg
 
 import (
+	"fmt"
 	"math"
 	"net/http"
 	"os"
+	"strconv"
 	"testing"
 )
 
@@ -58,4 +60,21 @@ func SetEnv(t *testing.T, key, value string) (UnsetFunc, error) {
 
 	}, nil
 
+}
+
+func ValidateCounter(value string) (int64, error) {
+	val, err := strconv.ParseInt(value, 10, 64)
+	if err != nil {
+		return val, fmt.Errorf("value is not int")
+
+	}
+
+	if val < 0 {
+		return val, fmt.Errorf("counter can not be negative")
+	}
+	return val, err
+}
+
+func StringNotEmpty(s string) bool {
+	return s != ""
 }

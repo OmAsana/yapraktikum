@@ -2,63 +2,100 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"os/signal"
-	"sync"
 	"syscall"
 
+	"github.com/OmAsana/yapraktikum/internal/logging"
+	"github.com/OmAsana/yapraktikum/internal/repository"
+	"github.com/OmAsana/yapraktikum/internal/repository/inmemorystore"
+	"github.com/OmAsana/yapraktikum/internal/repository/sql"
 	"github.com/OmAsana/yapraktikum/internal/server"
 )
 
-func startHTTPServer(wg *sync.WaitGroup) (*http.Server, error) {
+func startHTTPServer(addr string, handler *server.MetricsServer, logger *logging.Logger) (*http.Server, error) {
 
-	cfg, err := server.InitConfig()
-	if err != nil {
-		return nil, err
-	}
-
-	repo := server.NewRepositoryMock()
-	handler, err := server.NewMetricsServer(
-		repo,
-		server.WithRestore(cfg.Restore),
-		server.WithStoreFile(cfg.StoreFile),
-		server.WithStoreInterval(cfg.StoreInterval),
-	)
-	if err != nil {
-		return nil, err
-	}
-	srv := &http.Server{Addr: cfg.Address, Handler: handler}
+	srv := &http.Server{Addr: addr, Handler: handler}
 	go func() {
-		defer wg.Done()
 		defer handler.FlushToDisk()
 
 		if err := srv.ListenAndServe(); err != http.ErrServerClosed {
-			fmt.Println("Server shut down with err: ", err)
+			logger.S().Error("Server shut down with err: ", err)
 		}
 	}()
 	return srv, nil
-
 }
 
 func main() {
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT)
+
+	sigGracefullQuit, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT)
 	defer stop()
 
-	waitServerShutdown := &sync.WaitGroup{}
+	logger := logging.NewLogger()
 
-	waitServerShutdown.Add(1)
-	httpServer, err := startHTTPServer(waitServerShutdown)
-
+	cfg, err := server.InitConfig()
 	if err != nil {
-		panic(err)
+		logger.S().Panic("Could not init config: %s", err)
 	}
 
+	if err := logger.SetLogLevel(cfg.LogLevel); err != nil {
+		logger.S().Panic(err)
+	}
+
+	repo, err := setupRepo(cfg, logger)
+	if err != nil {
+		logger.S().Panic("Could not init config: %s", err)
+	}
+
+	handler, err := setupHandler(repo, cfg, logger)
+	if err != nil {
+		logger.S().Panic("Could not setup handler: %s", err)
+	}
+
+	httpServer, err := startHTTPServer(cfg.Address, handler, logger)
+
+	if err != nil {
+		logger.S().Panic(err)
+	}
+
+	connectionsClosed := make(chan struct{})
 	go func() {
-		<-ctx.Done()
-		httpServer.Shutdown(ctx)
+		<-sigGracefullQuit.Done()
+		if err := httpServer.Shutdown(context.Background()); err != nil {
+			logger.S().Errorf("Error on shutdown: %s", err)
+		}
+
+		close(connectionsClosed)
+
 	}()
 
-	waitServerShutdown.Wait()
+	<-connectionsClosed
+	defer logger.Flush()
 
+}
+
+func setupHandler(repo repository.MetricsRepository, cfg *server.Config, logger *logging.Logger) (*server.MetricsServer, error) {
+	handler, err := server.NewMetricsServer(
+		repo,
+		server.WithHashKey(cfg.HashKey),
+		server.WithLogger(logger),
+	)
+	return handler, err
+}
+
+func setupRepo(cfg *server.Config, logger *logging.Logger) (repository.MetricsRepository, error) {
+	var repo repository.MetricsRepository
+	var err error
+	if cfg.DatabaseDSN != "" {
+		repo, err = sql.NewRepository(cfg.DatabaseDSN, cfg.Restore, sql.WithLogger(logger))
+
+	} else {
+		repo, err = inmemorystore.NewInMemoryRepo(
+			inmemorystore.WithRestore(cfg.Restore),
+			inmemorystore.WithStoreFile(cfg.StoreFile),
+			inmemorystore.WithStoreInterval(cfg.StoreInterval),
+			inmemorystore.WithLogger(logger),
+		)
+	}
+	return repo, err
 }

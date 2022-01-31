@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/OmAsana/yapraktikum/internal/handlers"
+	"github.com/OmAsana/yapraktikum/internal/logging"
 	"github.com/OmAsana/yapraktikum/internal/metrics"
 )
 
@@ -21,20 +22,23 @@ type config struct {
 	PollInterval   time.Duration
 	ReportInterval time.Duration
 	BaseURL        *url.URL
+	HashKey        string
 }
 type Agent struct {
 	registry   *metrics.Registry
 	cfg        config
 	httpClient *http.Client
+	log        *logging.Logger
 }
 
 func NewDefaultAgent() *Agent {
-	defaultBaseURL, _ = url.Parse("http://127.0.0.1:8080")
+	defaultBaseURL, _ = url.Parse(fmt.Sprintf("http://%s", DefaultAddress))
 	return &Agent{registry: metrics.NewRegistry(),
 		httpClient: &http.Client{},
+		log:        logging.NewNoop(),
 		cfg: config{
-			PollInterval:   time.Second * 2,
-			ReportInterval: time.Second * 10,
+			PollInterval:   DefaultPollInterval,
+			ReportInterval: DefaultReportInterval,
 			BaseURL:        defaultBaseURL,
 		}}
 }
@@ -45,7 +49,7 @@ func NewAgentWithBaseURL(baseURL *url.URL) *Agent {
 	return agent
 }
 
-func NewAgentWithOptions(opts ...AgentOption) (*Agent, error) {
+func NewAgentWithOptions(opts ...Option) (*Agent, error) {
 	agent := NewDefaultAgent()
 
 	for _, opt := range opts {
@@ -59,13 +63,14 @@ func NewAgentWithOptions(opts ...AgentOption) (*Agent, error) {
 }
 
 func (a *Agent) logState() {
-	fmt.Printf(
+	a.log.S().Infof(
 		"Agent started. PollInterval: %.2fs, ReportInterval: %.2fs, Report to address: %q",
 		a.cfg.PollInterval.Seconds(),
 		a.cfg.ReportInterval.Seconds(),
 		a.cfg.BaseURL.String(),
 	)
 }
+
 func (a *Agent) Server(ctx context.Context) {
 	a.logState()
 
@@ -77,7 +82,8 @@ func (a *Agent) Server(ctx context.Context) {
 			a.registry.Collect()
 		case <-reportTicker.C:
 			//a.report()
-			a.reportAPIv2()
+			//a.reportAPIv2()
+			a.reportAPIv3()
 		case <-ctx.Done():
 			return
 		}
@@ -140,7 +146,7 @@ func (a *Agent) report() {
 	for _, gauge := range a.registry.Gauges {
 		req, err := a.plainTextRequest(a.updateGaugeURL(gauge))
 		if err != nil {
-			fmt.Println(err)
+			a.log.S().Error(err)
 		}
 		_ = a.sendRequest(req)
 	}
@@ -148,7 +154,7 @@ func (a *Agent) report() {
 	for _, counter := range a.registry.Counters {
 		req, err := a.plainTextRequest(a.updateCounterURL(counter))
 		if err != nil {
-			fmt.Println(err)
+			a.log.S().Error(err)
 		}
 		_ = a.sendRequest(req)
 
@@ -156,9 +162,65 @@ func (a *Agent) report() {
 
 	req, err := a.plainTextRequest(a.updateCounterURL(a.registry.PollCounter))
 	if err != nil {
-		fmt.Println(err)
+		a.log.S().Error(err)
 	}
 	_ = a.sendRequest(req)
+}
+
+func (a Agent) reportAPIv3() {
+
+	var metrics []*handlers.Metrics
+	for _, gauge := range a.registry.Gauges {
+		metric := &handlers.Metrics{
+			ID:    gauge.Name,
+			MType: "gauge",
+			Value: &gauge.Value,
+		}
+		metrics = append(metrics, metric)
+	}
+	for _, counter := range a.registry.Counters {
+		metric := &handlers.Metrics{
+			ID:    counter.Name,
+			MType: "counter",
+			Delta: &counter.Value,
+		}
+		metrics = append(metrics, metric)
+
+	}
+
+	metrics = append(metrics, &handlers.Metrics{
+		ID:    a.registry.PollCounter.Name,
+		MType: "counter",
+		Delta: &a.registry.PollCounter.Value},
+	)
+
+	if a.cfg.HashKey != "" {
+		for _, m := range metrics {
+			err := m.HashMetric(a.cfg.HashKey)
+			if err != nil {
+				a.log.S().Error("Error hashing metric: ", err)
+				return
+			}
+
+		}
+	}
+
+	var buf bytes.Buffer
+	err := json.NewEncoder(&buf).Encode(metrics)
+	if err != nil {
+		a.log.S().Error("Error encoding metrics: ", err)
+		return
+	}
+
+	req, err := a.jsonRequest("/updates/", &buf)
+	if err != nil {
+		a.log.S().Error("Error preparing request: ", err)
+		return
+	}
+	err = a.sendRequest(req)
+	if err != nil {
+		a.log.S().Error("Could not complete request: ", err)
+	}
 }
 
 func (a Agent) reportAPIv2() {
@@ -170,15 +232,23 @@ func (a Agent) reportAPIv2() {
 			if !open {
 				return
 			}
+			if a.cfg.HashKey != "" {
+				err := m.HashMetric(a.cfg.HashKey)
+				if err != nil {
+					a.log.S().Error(err)
+					continue
+				}
+			}
+
 			var buf bytes.Buffer
 			err := json.NewEncoder(&buf).Encode(m)
 			if err != nil {
-				fmt.Println(err)
+				a.log.S().Error(err)
 				continue
 			}
 			req, err := a.jsonRequest("/update/", &buf)
 			if err != nil {
-				fmt.Println(err)
+				a.log.S().Error(err)
 				continue
 			}
 			_ = a.sendRequest(req)

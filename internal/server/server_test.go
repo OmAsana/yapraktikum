@@ -1,15 +1,12 @@
 package server
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"math"
 	"net/http"
 	"net/http/httptest"
-	"os"
-	"sort"
 	"strconv"
 	"strings"
 	"testing"
@@ -17,14 +14,15 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/OmAsana/yapraktikum/internal/handlers"
 	"github.com/OmAsana/yapraktikum/internal/metrics"
-	"github.com/OmAsana/yapraktikum/internal/pkg"
+	"github.com/OmAsana/yapraktikum/internal/repository"
+	"github.com/OmAsana/yapraktikum/internal/repository/inmemorystore"
 )
 
-func SetupRepo(t *testing.T) MetricsRepository {
+func SetupRepo(t *testing.T, opts ...inmemorystore.Options) repository.MetricsRepository {
 	t.Helper()
-	repo := NewRepositoryMock()
+	repo, err := inmemorystore.NewInMemoryRepo(opts...)
+	assert.NoError(t, err)
 	return repo
 }
 
@@ -511,90 +509,4 @@ func TestMetricsServer_Update(t *testing.T) {
 			require.Equal(t, tt.wantCode, resp.StatusCode, body)
 		})
 	}
-}
-
-func TestFlushToDisk(t *testing.T) {
-	t.Run("graceful shutdown", func(t *testing.T) {
-		file, err := ioutil.TempFile("/tmp", "cacher_test_file")
-		assert.NoError(t, err)
-		defer os.Remove(file.Name())
-
-		srvOne, err := NewMetricsServer(
-			SetupRepo(t),
-			WithStoreFile(file.Name()),
-			WithRestore(false),
-		)
-		assert.NoError(t, err)
-
-		data := []handlers.Metrics{
-			{
-				ID:    "couter1",
-				MType: "counter",
-				Delta: pkg.PointerInt(66),
-				Value: nil,
-			},
-			{
-				ID:    "gauge",
-				MType: "gauge",
-				Delta: nil,
-				Value: pkg.PointerFloat(124.1),
-			},
-		}
-
-		ts := httptest.NewServer(srvOne)
-		for _, m := range data {
-
-			d, err := json.Marshal(m)
-			assert.NoError(t, err)
-
-			resp, _ := executeTestRequest(t, ts, func() (*http.Request, error) {
-				req, err := http.NewRequest(http.MethodPost, ts.URL+"/update/", strings.NewReader(string(d)))
-				if err != nil {
-					return req, err
-				}
-
-				req.Header.Set("Content-Type", "application/json")
-				return req, err
-			})
-			defer resp.Body.Close()
-		}
-
-		srvOne.FlushToDisk()
-
-		newRepo := SetupRepo(t)
-		_, err = NewMetricsServer(newRepo, WithStoreFile(file.Name()), WithRestore(true))
-		assert.NoError(t, err)
-
-		gauges, counter, err := newRepo.ListStoredMetrics()
-		assert.NoError(t, err)
-
-		var metricsFromDisk []handlers.Metrics
-
-		for _, g := range gauges {
-			handlerScheme := metrics.GaugeToHandlerScheme(g)
-			metricsFromDisk = append(metricsFromDisk, handlerScheme)
-		}
-
-		for _, c := range counter {
-			handlerScheme := metrics.CounterToHandlerScheme(c)
-			metricsFromDisk = append(metricsFromDisk, handlerScheme)
-
-		}
-
-		sort.SliceStable(data, func(i, j int) bool {
-			return data[i].ID < data[j].ID
-
-		})
-
-		sort.SliceStable(metricsFromDisk, func(i, j int) bool {
-			return metricsFromDisk[i].ID < metricsFromDisk[j].ID
-
-		})
-
-		for k, v := range data {
-			assert.Equal(t, v, metricsFromDisk[k])
-		}
-
-	})
-
 }

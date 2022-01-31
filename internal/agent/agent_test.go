@@ -16,6 +16,8 @@ import (
 	"github.com/OmAsana/yapraktikum/internal/handlers"
 	"github.com/OmAsana/yapraktikum/internal/metrics"
 	"github.com/OmAsana/yapraktikum/internal/pkg"
+	"github.com/OmAsana/yapraktikum/internal/repository"
+	"github.com/OmAsana/yapraktikum/internal/repository/inmemorystore"
 	"github.com/OmAsana/yapraktikum/internal/server"
 )
 
@@ -25,9 +27,9 @@ func ExampleAgent_Server() {
 	agent.Server(ctx)
 }
 
-func SetupRepo(t *testing.T) server.MetricsRepository {
+func SetupRepo(t *testing.T) repository.MetricsRepository {
 	t.Helper()
-	repo := server.NewRepositoryMock()
+	repo := inmemorystore.NewDefaultInMemoryRepo()
 	return repo
 }
 

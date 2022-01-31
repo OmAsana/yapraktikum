@@ -77,6 +77,7 @@ func Test_initCmdFlags(t *testing.T) {
 			StoreInterval: 200 * time.Second,
 			StoreFile:     "/tmp/random_file",
 			Restore:       false,
+			LogLevel:      DefaultLogLevel,
 		}
 		assert.EqualValues(t, targetCfg, cfg)
 

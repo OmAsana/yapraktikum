@@ -1,4 +1,4 @@
-package server
+package repository
 
 import (
 	"fmt"
@@ -12,6 +12,7 @@ var (
 	ErrorCounterNotFound  RepositoryError = fmt.Errorf("counter not found")
 	ErrorCounterIsNoValid RepositoryError = fmt.Errorf("counter is not valid")
 	ErrorGaugeNotFound    RepositoryError = fmt.Errorf("gauge not found")
+	ErrorInternalError    RepositoryError = fmt.Errorf("internal error")
 )
 
 type MetricsRepository interface {
@@ -20,4 +21,7 @@ type MetricsRepository interface {
 	StoreGauge(gauge metrics.Gauge) RepositoryError
 	RetrieveGauge(name string) (metrics.Gauge, RepositoryError)
 	ListStoredMetrics() ([]metrics.Gauge, []metrics.Counter, RepositoryError)
+	Ping() bool
+	WriteBulkGauges(gauges []metrics.Gauge) error
+	WriteBulkCounters(counters []metrics.Counter) error
 }

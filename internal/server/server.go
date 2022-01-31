@@ -13,68 +13,36 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 
 	"github.com/OmAsana/yapraktikum/internal/handlers"
+	"github.com/OmAsana/yapraktikum/internal/logging"
 	"github.com/OmAsana/yapraktikum/internal/metrics"
 	"github.com/OmAsana/yapraktikum/internal/pkg"
+	"github.com/OmAsana/yapraktikum/internal/repository"
 )
 
 type MetricsServer struct {
 	*chi.Mux
-	db            MetricsRepository
+	db            repository.MetricsRepository
 	storeInterval time.Duration
 	storeFile     string
 	restore       bool
-	cacherReader  *cacherReader
-	cacherWriter  Cacher
+	hashKey       string
+	log           *logging.Logger
 }
 
-type ServerOpts func(server *MetricsServer)
-
-func WithStoreFile(file string) ServerOpts {
-	return func(server *MetricsServer) {
-		server.storeFile = file
-	}
-}
-
-func WithStoreInterval(interval time.Duration) ServerOpts {
-	return func(server *MetricsServer) {
-		server.storeInterval = interval
-	}
-}
-
-func WithRestore(restore bool) ServerOpts {
-	return func(server *MetricsServer) {
-		server.restore = restore
-	}
-}
-
-func NewMetricsServer(db MetricsRepository, opts ...ServerOpts) (*MetricsServer, error) {
+func NewMetricsServer(db repository.MetricsRepository, opts ...Options) (*MetricsServer, error) {
 	srv := &MetricsServer{
 		db:            db,
 		Mux:           chi.NewMux(),
 		storeInterval: 0 * time.Second,
-		storeFile:     "0",
+		storeFile:     "",
 		restore:       false,
+		log:           logging.NewNoop(),
 	}
 
 	for _, opt := range opts {
 		opt(srv)
 	}
 
-	if srv.storeFile != "" {
-		if srv.restore {
-			srv.restoreData()
-		}
-
-		cacheWriter, err := NewCacherWriter(srv.storeFile)
-		if err != nil {
-			return nil, err
-		}
-		srv.cacherWriter = cacheWriter
-	} else {
-		srv.cacherWriter = NewNoopCacher()
-	}
-
-	srv.periodicDataWriter()
 	setupRoutes(srv)
 
 	return srv, nil
@@ -85,11 +53,14 @@ func setupRoutes(srv *MetricsServer) {
 	srv.Use(middleware.RealIP)
 	srv.Use(middleware.Logger)
 	srv.Use(middleware.Recoverer)
+	srv.Use(compressorHandler)
 
 	srv.Get("/", srv.ReturnCurrentMetrics())
+	srv.Get("/ping", srv.Ping())
 	srv.Get("/value/{metricType}/{metricName}", srv.GetMetric())
 
 	srv.Post("/value/", srv.Value())
+	srv.Post("/updates/", srv.Updates())
 
 	srv.Route("/update", func(r chi.Router) {
 		r.Post("/", srv.Update())
@@ -124,7 +95,7 @@ func (ms MetricsServer) Value() http.HandlerFunc {
 		case "counter":
 			c, err := ms.db.RetrieveCounter(m.ID)
 			if err != nil {
-				fmt.Printf("Not found metric %+v", m)
+				ms.log.S().Infof("Not found metric %+v", m)
 				http.Error(writer, err.Error(), http.StatusNotFound)
 				return
 			}
@@ -134,7 +105,7 @@ func (ms MetricsServer) Value() http.HandlerFunc {
 		case "gauge":
 			g, err := ms.db.RetrieveGauge(m.ID)
 			if err != nil {
-				fmt.Printf("Not found metric %+v", m)
+				ms.log.S().Infof("Not found metric %+v", m)
 				http.Error(writer, err.Error(), http.StatusNotFound)
 				return
 			}
@@ -147,14 +118,21 @@ func (ms MetricsServer) Value() http.HandlerFunc {
 
 		}
 
+		if err := ms.writeHash(&m); err != nil {
+			http.Error(writer, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
 		out, err := json.Marshal(m)
 		if err != nil {
 			http.Error(writer, err.Error(), http.StatusInternalServerError)
 			return
 		}
-
 		writer.Header().Add("Content-Type", "application/json")
-		writer.Write(out)
+		_, err = writer.Write(out)
+		if err != nil {
+			ms.log.S().Error(err)
+		}
 	}
 }
 
@@ -167,6 +145,11 @@ func (ms MetricsServer) Update() http.HandlerFunc {
 		var m handlers.Metrics
 		err := json.NewDecoder(request.Body).Decode(&m)
 		if err != nil {
+			http.Error(writer, err.Error(), http.StatusBadRequest)
+			return
+		}
+		ok, err := ms.hashIsValid(m)
+		if !ok {
 			http.Error(writer, err.Error(), http.StatusBadRequest)
 			return
 		}
@@ -183,17 +166,11 @@ func (ms MetricsServer) saveMetric(writer http.ResponseWriter, m handlers.Metric
 			return
 		}
 
-		c := metrics.Counter{
-			Name:  m.ID,
-			Value: *m.Delta,
-		}
-
-		err := ms.db.StoreCounter(c)
+		err := ms.db.StoreCounter(metrics.CounterFromHandler(m))
 		if err != nil {
 			http.Error(writer, "internal error", http.StatusInternalServerError)
 			return
 		}
-		ms.flushToDisk()
 		writer.WriteHeader(http.StatusOK)
 		return
 	case "gauge":
@@ -202,17 +179,11 @@ func (ms MetricsServer) saveMetric(writer http.ResponseWriter, m handlers.Metric
 			return
 		}
 
-		g := metrics.Gauge{
-			Name:  m.ID,
-			Value: *m.Value,
-		}
-
-		err := ms.db.StoreGauge(g)
+		err := ms.db.StoreGauge(metrics.GaugeFromHandler(m))
 		if err != nil {
 			http.Error(writer, "internal error", http.StatusInternalServerError)
 			return
 		}
-		ms.flushToDisk()
 		writer.WriteHeader(http.StatusOK)
 		return
 	default:
@@ -295,7 +266,7 @@ func (ms MetricsServer) UpdateCounters() http.HandlerFunc {
 		metricName := chi.URLParam(request, "counterName")
 		value := chi.URLParam(request, "counterValue")
 
-		val, err := validateCounter(value)
+		val, err := pkg.ValidateCounter(value)
 		if err != nil {
 			http.Error(writer, err.Error(), http.StatusBadRequest)
 			return
@@ -326,6 +297,7 @@ func (ms MetricsServer) ReturnCurrentMetrics() http.HandlerFunc {
 		for _, c := range counters {
 			sb.WriteString(fmt.Sprintf("%s\t\t%d\n", c.Name, c.Value))
 		}
+		writer.Header().Set("Content-Type", "text/html")
 		_, err = io.WriteString(writer, sb.String())
 		if err != nil {
 			http.Error(writer, "internal error", http.StatusInternalServerError)
@@ -336,103 +308,94 @@ func (ms MetricsServer) ReturnCurrentMetrics() http.HandlerFunc {
 	}
 }
 
-func (ms MetricsServer) restoreData() error {
-	reader, err := NewCacherReader(ms.storeFile)
+func (ms MetricsServer) FlushToDisk() {
+	// TODO: Remove this redundant method
+}
+
+func (ms MetricsServer) hashIsValid(m handlers.Metrics) (bool, error) {
+	// Do not check hash if server hash key is empty
+	if !pkg.StringNotEmpty(ms.hashKey) {
+		return true, nil
+	}
+
+	if !pkg.StringNotEmpty(m.Hash) {
+		return true, nil
+	}
+
+	hash, err := m.ComputeHash(ms.hashKey)
 	if err != nil {
-		return err
+		return false, err
 	}
-	metricsFromDisk, err := reader.ReadMetricsFromCache()
-	if err != nil && err != io.EOF {
-		fmt.Println("restore data")
-		fmt.Println(err)
-		return err
+	if m.Hash != hash {
+		return false, fmt.Errorf("invalid metric hash")
 	}
-	if err == io.EOF {
-		return nil
-	}
-	for _, m := range metricsFromDisk {
-		switch m.MType {
-		case "counter":
+	return true, nil
+}
 
-			c := metrics.Counter{
-				Name:  m.ID,
-				Value: *m.Delta,
-			}
-
-			err := ms.db.StoreCounter(c)
-			if err != nil {
-				return err
-			}
-		case "gauge":
-
-			g := metrics.Gauge{
-				Name:  m.ID,
-				Value: *m.Value,
-			}
-			err := ms.db.StoreGauge(g)
-			if err != nil {
-				return err
-			}
-		}
+func (ms MetricsServer) writeHash(h *handlers.Metrics) error {
+	if pkg.StringNotEmpty(ms.hashKey) {
+		return h.HashMetric(ms.hashKey)
 	}
+
 	return nil
 }
 
-func (ms MetricsServer) writeMetricToFile(m *handlers.Metrics) {
-	if ms.storeInterval > 0 {
-		return
+func (ms MetricsServer) Ping() http.HandlerFunc {
+	return func(writer http.ResponseWriter, request *http.Request) {
+		if ms.db.Ping() {
+			writer.WriteHeader(http.StatusOK)
+			return
+		}
+		http.Error(writer, "db is down", http.StatusInternalServerError)
 	}
-	ms.flushToDisk()
 }
 
-func (ms MetricsServer) periodicDataWriter() {
-	if ms.storeInterval > 0 {
-		go func() {
-			ticker := time.NewTicker(ms.storeInterval)
-			for range ticker.C {
-				ms.flushToDisk()
+func (ms MetricsServer) Updates() http.HandlerFunc {
+	return func(writer http.ResponseWriter, request *http.Request) {
+		if !pkg.Contains(request.Header.Values("Content-Type"), "application/json") {
+			http.Error(writer, "not implemented", http.StatusNotImplemented)
+		}
+
+		var metricList []handlers.Metrics
+		err := json.NewDecoder(request.Body).Decode(&metricList)
+		if err != nil {
+			http.Error(writer, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		for _, metric := range metricList {
+			ok, err := ms.hashIsValid(metric)
+			if !ok {
+				http.Error(writer, err.Error(), http.StatusBadRequest)
+				return
 			}
-		}()
+		}
+
+		var gauges []metrics.Gauge
+		var counters []metrics.Counter
+
+		for _, m := range metricList {
+			switch m.MType {
+			case "counter":
+				counters = append(counters, metrics.CounterFromHandler(m))
+			case "gauge":
+				gauges = append(gauges, metrics.GaugeFromHandler(m))
+			}
+		}
+
+		err = ms.db.WriteBulkGauges(gauges)
+		if err != nil {
+			ms.log.S().Error("Bulk write to db failed: ", err)
+			http.Error(writer, "internal error", http.StatusInternalServerError)
+			return
+		}
+
+		err = ms.db.WriteBulkCounters(counters)
+		if err != nil {
+			ms.log.S().Error("Bulk write to db failed: ", err)
+			http.Error(writer, "internal error", http.StatusInternalServerError)
+			return
+		}
+		writer.WriteHeader(http.StatusOK)
 	}
-}
-
-func (ms MetricsServer) flushToDisk() {
-	gauges, couters, err := ms.db.ListStoredMetrics()
-	if err != nil {
-		fmt.Println(err)
-	}
-	flushMetrics := []handlers.Metrics{}
-	for _, g := range gauges {
-		m := metrics.GaugeToHandlerScheme(g)
-		flushMetrics = append(flushMetrics, m)
-
-	}
-
-	for _, c := range couters {
-		m := metrics.CounterToHandlerScheme(c)
-		flushMetrics = append(flushMetrics, m)
-
-	}
-
-	err = ms.cacherWriter.WriteMultipleMetrics(&flushMetrics)
-	if err != nil {
-		fmt.Println(err)
-	}
-}
-
-func (ms MetricsServer) FlushToDisk() {
-	ms.flushToDisk()
-}
-
-func validateCounter(value string) (int64, error) {
-	val, err := strconv.ParseInt(value, 10, 64)
-	if err != nil {
-		return val, fmt.Errorf("value is not int")
-
-	}
-
-	if val < 0 {
-		return val, fmt.Errorf("counter can not be negative")
-	}
-	return val, err
 }
