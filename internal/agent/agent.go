@@ -61,13 +61,14 @@ func NewAgentWithOptions(opts ...Option) (*Agent, error) {
 }
 
 func (a *Agent) logState() {
-	fmt.Printf(
+	logging.Log.S().Infof(
 		"Agent started. PollInterval: %.2fs, ReportInterval: %.2fs, Report to address: %q",
 		a.cfg.PollInterval.Seconds(),
 		a.cfg.ReportInterval.Seconds(),
 		a.cfg.BaseURL.String(),
 	)
 }
+
 func (a *Agent) Server(ctx context.Context) {
 	a.logState()
 
@@ -143,7 +144,7 @@ func (a *Agent) report() {
 	for _, gauge := range a.registry.Gauges {
 		req, err := a.plainTextRequest(a.updateGaugeURL(gauge))
 		if err != nil {
-			fmt.Println(err)
+			logging.Log.S().Error(err)
 		}
 		_ = a.sendRequest(req)
 	}
@@ -151,7 +152,7 @@ func (a *Agent) report() {
 	for _, counter := range a.registry.Counters {
 		req, err := a.plainTextRequest(a.updateCounterURL(counter))
 		if err != nil {
-			fmt.Println(err)
+			logging.Log.S().Error(err)
 		}
 		_ = a.sendRequest(req)
 
@@ -159,7 +160,7 @@ func (a *Agent) report() {
 
 	req, err := a.plainTextRequest(a.updateCounterURL(a.registry.PollCounter))
 	if err != nil {
-		fmt.Println(err)
+		logging.Log.S().Error(err)
 	}
 	_ = a.sendRequest(req)
 }
@@ -232,7 +233,7 @@ func (a Agent) reportAPIv2() {
 			if a.cfg.HashKey != "" {
 				err := m.HashMetric(a.cfg.HashKey)
 				if err != nil {
-					fmt.Println(err)
+					logging.Log.S().Error(err)
 					continue
 				}
 			}
@@ -240,12 +241,12 @@ func (a Agent) reportAPIv2() {
 			var buf bytes.Buffer
 			err := json.NewEncoder(&buf).Encode(m)
 			if err != nil {
-				fmt.Println(err)
+				logging.Log.S().Error(err)
 				continue
 			}
 			req, err := a.jsonRequest("/update/", &buf)
 			if err != nil {
-				fmt.Println(err)
+				logging.Log.S().Error(err)
 				continue
 			}
 			_ = a.sendRequest(req)

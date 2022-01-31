@@ -3,7 +3,6 @@ package sql
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"strings"
 	"time"
 
@@ -118,7 +117,6 @@ func (r *Repository) initTable() error {
 func (r *Repository) Ping() bool {
 	err := r.db.Ping()
 	if err != nil {
-		fmt.Println(err)
 		return false
 	}
 

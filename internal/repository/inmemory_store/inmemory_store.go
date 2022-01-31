@@ -1,12 +1,12 @@
 package inmemory_store
 
 import (
-	"fmt"
 	"io"
 	"sync"
 	"time"
 
 	"github.com/OmAsana/yapraktikum/internal/handlers"
+	"github.com/OmAsana/yapraktikum/internal/logging"
 	"github.com/OmAsana/yapraktikum/internal/metrics"
 	"github.com/OmAsana/yapraktikum/internal/repository"
 )
@@ -231,13 +231,13 @@ func (r *InMemoryStore) restoreData() error {
 func (r *InMemoryStore) flushToDisk() {
 	gauges, couters, err := r.ListStoredMetrics()
 	if err != nil {
-		fmt.Println(err)
+		logging.Log.S().Error("Failed to list metrics: %w", err)
+		return
 	}
 	flushMetrics := []handlers.Metrics{}
 	for _, g := range gauges {
 		m := metrics.GaugeToHandlerScheme(g)
 		flushMetrics = append(flushMetrics, m)
-
 	}
 
 	for _, c := range couters {
@@ -248,6 +248,6 @@ func (r *InMemoryStore) flushToDisk() {
 
 	err = r.cacherWriter.WriteMultipleMetrics(&flushMetrics)
 	if err != nil {
-		fmt.Println(err)
+		logging.Log.S().Error("Failed to write metrics: %w", err)
 	}
 }

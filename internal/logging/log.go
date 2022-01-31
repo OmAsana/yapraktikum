@@ -13,6 +13,10 @@ type logger struct {
 	*zap.Logger
 }
 
+func (l *logger) Flush() {
+	l.Logger.Sync()
+}
+
 func (l *logger) S() *zap.SugaredLogger {
 	return l.Logger.Sugar()
 

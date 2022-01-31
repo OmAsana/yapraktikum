@@ -2,10 +2,8 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"os/signal"
-	"sync"
 	"syscall"
 
 	"github.com/OmAsana/yapraktikum/internal/logging"
@@ -15,7 +13,7 @@ import (
 	"github.com/OmAsana/yapraktikum/internal/server"
 )
 
-func startHTTPServer(wg *sync.WaitGroup) (*http.Server, error) {
+func startHTTPServer() (*http.Server, error) {
 
 	cfg, err := server.InitConfig()
 	if err != nil {
@@ -46,11 +44,10 @@ func startHTTPServer(wg *sync.WaitGroup) (*http.Server, error) {
 	}
 	srv := &http.Server{Addr: cfg.Address, Handler: handler}
 	go func() {
-		defer wg.Done()
 		defer handler.FlushToDisk()
 
 		if err := srv.ListenAndServe(); err != http.ErrServerClosed {
-			fmt.Println("Server shut down with err: ", err)
+			logging.Log.S().Error("Server shut down with err: ", err)
 		}
 	}()
 	return srv, nil
@@ -58,23 +55,27 @@ func startHTTPServer(wg *sync.WaitGroup) (*http.Server, error) {
 }
 
 func main() {
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT)
+	sigGracefullQuit, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT)
 	defer stop()
 
-	waitServerShutdown := &sync.WaitGroup{}
-
-	waitServerShutdown.Add(1)
-	httpServer, err := startHTTPServer(waitServerShutdown)
+	httpServer, err := startHTTPServer()
 
 	if err != nil {
 		panic(err)
 	}
 
+	connectionsClosed := make(chan struct{})
 	go func() {
-		<-ctx.Done()
-		httpServer.Shutdown(ctx)
+		<-sigGracefullQuit.Done()
+		if err := httpServer.Shutdown(context.Background()); err != nil {
+			logging.Log.S().Errorf("Error on shutdown: %s", err)
+		}
+
+		close(connectionsClosed)
+
 	}()
 
-	waitServerShutdown.Wait()
+	<-connectionsClosed
+	defer logging.Log.Flush()
 
 }

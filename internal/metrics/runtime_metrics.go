@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"reflect"
 	"runtime"
+
+	"github.com/OmAsana/yapraktikum/internal/logging"
 )
 
 var memoryStats = []string{
@@ -51,7 +53,7 @@ func memStats() []Gauge {
 	for _, v := range memoryStats {
 		gauge, err := reflectMemoryStats(mStats, v)
 		if err != nil {
-			fmt.Println(err)
+			logging.Log.S().Error(err)
 			continue
 		}
 
