@@ -25,7 +25,7 @@ func startHTTPServer(wg *sync.WaitGroup) (*http.Server, error) {
 
 	var repo repository.MetricsRepository
 	if cfg.DatabaseDSN != "" {
-		repo, err = sql.NewRepository(cfg.DatabaseDSN)
+		repo, err = sql.NewRepository(cfg.DatabaseDSN, cfg.Restore)
 
 	} else {
 		repo, err = mock.NewInMemoryRepo(

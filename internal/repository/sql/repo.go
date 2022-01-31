@@ -20,7 +20,7 @@ type Repository struct {
 	db *sql.DB
 }
 
-func NewRepository(dbn string) (*Repository, error) {
+func NewRepository(dbn string, restore bool) (*Repository, error) {
 	db, err := sql.Open("pgx", dbn)
 	if err != nil {
 		return nil, err
@@ -28,6 +28,11 @@ func NewRepository(dbn string) (*Repository, error) {
 	r := &Repository{
 		db: db,
 	}
+
+	if !restore {
+		r.dropDatabase()
+	}
+
 	if err := r.initTable(); err != nil {
 		return nil, err
 	}
@@ -213,4 +218,14 @@ func (r Repository) retriveGauges(ctx context.Context) ([]metrics.Gauge, error) 
 	}
 
 	return gauges, nil
+}
+
+func (r *Repository) dropDatabase() error {
+	sqlStatement := `DROP TABLE IF EXISTS counters, gauges CASCADE`
+	_, err := r.db.Exec(sqlStatement)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
