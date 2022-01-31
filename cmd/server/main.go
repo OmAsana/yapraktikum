@@ -6,6 +6,8 @@ import (
 	"os/signal"
 	"syscall"
 
+	"go.uber.org/zap/zapcore"
+
 	"github.com/OmAsana/yapraktikum/internal/logging"
 	"github.com/OmAsana/yapraktikum/internal/repository"
 	"github.com/OmAsana/yapraktikum/internal/repository/inmemorystore"
@@ -13,62 +15,56 @@ import (
 	"github.com/OmAsana/yapraktikum/internal/server"
 )
 
-func startHTTPServer() (*http.Server, error) {
+func startHTTPServer(addr string, handler *server.MetricsServer, logger *logging.Logger) (*http.Server, error) {
 
-	cfg, err := server.InitConfig()
-	if err != nil {
-		return nil, err
-	}
-	logging.Log.S().Infof("Config: %+v", cfg)
-
-	var repo repository.MetricsRepository
-	if cfg.DatabaseDSN != "" {
-		repo, err = sql.NewRepository(cfg.DatabaseDSN, cfg.Restore)
-
-	} else {
-		repo, err = inmemorystore.NewInMemoryRepo(
-			inmemorystore.WithRestore(cfg.Restore),
-			inmemorystore.WithStoreFile(cfg.StoreFile),
-			inmemorystore.WithStoreInterval(cfg.StoreInterval),
-		)
-	}
-	if err != nil {
-		return nil, err
-	}
-	handler, err := server.NewMetricsServer(
-		repo,
-		server.WithHashKey(cfg.HashKey),
-	)
-	if err != nil {
-		return nil, err
-	}
-	srv := &http.Server{Addr: cfg.Address, Handler: handler}
+	srv := &http.Server{Addr: addr, Handler: handler}
 	go func() {
 		defer handler.FlushToDisk()
 
 		if err := srv.ListenAndServe(); err != http.ErrServerClosed {
-			logging.Log.S().Error("Server shut down with err: ", err)
+			logger.S().Error("Server shut down with err: ", err)
 		}
 	}()
 	return srv, nil
-
 }
 
 func main() {
+
 	sigGracefullQuit, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT)
 	defer stop()
 
-	httpServer, err := startHTTPServer()
+	logger := logging.NewLogger()
+
+	cfg, err := server.InitConfig()
+	if err != nil {
+		logger.S().Panic("Could not init config: %s", err)
+	}
+
+	if cfg.Debug {
+		logger.SetLogLevel(zapcore.DebugLevel)
+	}
+
+	repo, err := setupRepo(cfg, logger)
+	if err != nil {
+		logger.S().Panic("Could not init config: %s", err)
+	}
+
+	handler, err := setupHandler(repo, cfg, logger)
+	if err != nil {
+		logger.S().Panic("Could not setup handler: %s", err)
+	}
+
+	httpServer, err := startHTTPServer(cfg.Address, handler, logger)
 
 	if err != nil {
-		panic(err)
+		logger.S().Panic(err)
 	}
 
 	connectionsClosed := make(chan struct{})
 	go func() {
 		<-sigGracefullQuit.Done()
 		if err := httpServer.Shutdown(context.Background()); err != nil {
-			logging.Log.S().Errorf("Error on shutdown: %s", err)
+			logger.S().Errorf("Error on shutdown: %s", err)
 		}
 
 		close(connectionsClosed)
@@ -76,6 +72,32 @@ func main() {
 	}()
 
 	<-connectionsClosed
-	defer logging.Log.Flush()
+	defer logger.Flush()
 
+}
+
+func setupHandler(repo repository.MetricsRepository, cfg *server.Config, logger *logging.Logger) (*server.MetricsServer, error) {
+	handler, err := server.NewMetricsServer(
+		repo,
+		server.WithHashKey(cfg.HashKey),
+		server.WithLogger(logger),
+	)
+	return handler, err
+}
+
+func setupRepo(cfg *server.Config, logger *logging.Logger) (repository.MetricsRepository, error) {
+	var repo repository.MetricsRepository
+	var err error
+	if cfg.DatabaseDSN != "" {
+		repo, err = sql.NewRepository(cfg.DatabaseDSN, cfg.Restore, sql.WithLogger(logger))
+
+	} else {
+		repo, err = inmemorystore.NewInMemoryRepo(
+			inmemorystore.WithRestore(cfg.Restore),
+			inmemorystore.WithStoreFile(cfg.StoreFile),
+			inmemorystore.WithStoreInterval(cfg.StoreInterval),
+			inmemorystore.WithLogger(logger),
+		)
+	}
+	return repo, err
 }

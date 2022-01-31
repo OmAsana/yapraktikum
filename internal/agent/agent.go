@@ -28,12 +28,14 @@ type Agent struct {
 	registry   *metrics.Registry
 	cfg        config
 	httpClient *http.Client
+	log        *logging.Logger
 }
 
 func NewDefaultAgent() *Agent {
 	defaultBaseURL, _ = url.Parse(fmt.Sprintf("http://%s", DefaultAddress))
 	return &Agent{registry: metrics.NewRegistry(),
 		httpClient: &http.Client{},
+		log:        logging.NewNoop(),
 		cfg: config{
 			PollInterval:   DefaultPollInterval,
 			ReportInterval: DefaultReportInterval,
@@ -61,7 +63,7 @@ func NewAgentWithOptions(opts ...Option) (*Agent, error) {
 }
 
 func (a *Agent) logState() {
-	logging.Log.S().Infof(
+	a.log.S().Infof(
 		"Agent started. PollInterval: %.2fs, ReportInterval: %.2fs, Report to address: %q",
 		a.cfg.PollInterval.Seconds(),
 		a.cfg.ReportInterval.Seconds(),
@@ -144,7 +146,7 @@ func (a *Agent) report() {
 	for _, gauge := range a.registry.Gauges {
 		req, err := a.plainTextRequest(a.updateGaugeURL(gauge))
 		if err != nil {
-			logging.Log.S().Error(err)
+			a.log.S().Error(err)
 		}
 		_ = a.sendRequest(req)
 	}
@@ -152,7 +154,7 @@ func (a *Agent) report() {
 	for _, counter := range a.registry.Counters {
 		req, err := a.plainTextRequest(a.updateCounterURL(counter))
 		if err != nil {
-			logging.Log.S().Error(err)
+			a.log.S().Error(err)
 		}
 		_ = a.sendRequest(req)
 
@@ -160,7 +162,7 @@ func (a *Agent) report() {
 
 	req, err := a.plainTextRequest(a.updateCounterURL(a.registry.PollCounter))
 	if err != nil {
-		logging.Log.S().Error(err)
+		a.log.S().Error(err)
 	}
 	_ = a.sendRequest(req)
 }
@@ -196,7 +198,7 @@ func (a Agent) reportAPIv3() {
 		for _, m := range metrics {
 			err := m.HashMetric(a.cfg.HashKey)
 			if err != nil {
-				logging.Log.S().Error("Error hashing metric: ", err)
+				a.log.S().Error("Error hashing metric: ", err)
 				return
 			}
 
@@ -206,18 +208,18 @@ func (a Agent) reportAPIv3() {
 	var buf bytes.Buffer
 	err := json.NewEncoder(&buf).Encode(metrics)
 	if err != nil {
-		logging.Log.S().Error("Error encoding metrics: ", err)
+		a.log.S().Error("Error encoding metrics: ", err)
 		return
 	}
 
 	req, err := a.jsonRequest("/updates/", &buf)
 	if err != nil {
-		logging.Log.S().Error("Error preparing request: ", err)
+		a.log.S().Error("Error preparing request: ", err)
 		return
 	}
 	err = a.sendRequest(req)
 	if err != nil {
-		logging.Log.S().Error("Could not complete request: ", err)
+		a.log.S().Error("Could not complete request: ", err)
 	}
 }
 
@@ -233,7 +235,7 @@ func (a Agent) reportAPIv2() {
 			if a.cfg.HashKey != "" {
 				err := m.HashMetric(a.cfg.HashKey)
 				if err != nil {
-					logging.Log.S().Error(err)
+					a.log.S().Error(err)
 					continue
 				}
 			}
@@ -241,12 +243,12 @@ func (a Agent) reportAPIv2() {
 			var buf bytes.Buffer
 			err := json.NewEncoder(&buf).Encode(m)
 			if err != nil {
-				logging.Log.S().Error(err)
+				a.log.S().Error(err)
 				continue
 			}
 			req, err := a.jsonRequest("/update/", &buf)
 			if err != nil {
-				logging.Log.S().Error(err)
+				a.log.S().Error(err)
 				continue
 			}
 			_ = a.sendRequest(req)

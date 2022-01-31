@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"encoding/json"
-	"fmt"
 	"testing"
 
 	"github.com/jinzhu/copier"
@@ -94,6 +93,11 @@ func TestMetrics_ComputeHash(t *testing.T) {
 	err := copier.Copy(&m2, m)
 	assert.NoError(t, err)
 
-	fmt.Println(m2.ComputeHash(key))
-	fmt.Println(m.ComputeHash(key))
+	h1, err := m2.ComputeHash(key)
+	require.NoError(t, err)
+	h2, err := m.ComputeHash(key)
+	require.NoError(t, err)
+
+	require.Equal(t, h1, h2)
+
 }

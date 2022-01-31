@@ -7,78 +7,78 @@ import (
 	"github.com/OmAsana/yapraktikum/internal/handlers"
 )
 
-type Cacher interface {
+type CacheWriter interface {
 	WriteSingleMetric(m *handlers.Metrics) error
 	WriteMultipleMetrics(m *[]handlers.Metrics) error
 	Close() error
 }
 
-var _ Cacher = (*cacherWriter)(nil)
+var _ CacheWriter = (*cacheWriter)(nil)
 
-type cacherWriter struct {
+type cacheWriter struct {
 	file    *os.File
 	encoder *json.Encoder
 }
 
-func NewCacherWriter(fileName string) (*cacherWriter, error) {
+func NewCacherWriter(fileName string) (*cacheWriter, error) {
 	file, err := os.OpenFile(fileName, os.O_WRONLY|os.O_CREATE, 0777)
 	if err != nil {
 		return nil, err
 	}
 
-	return &cacherWriter{
+	return &cacheWriter{
 		file:    file,
 		encoder: json.NewEncoder(file),
 	}, nil
 }
 
-func (c *cacherWriter) WriteSingleMetric(metrics *handlers.Metrics) error {
+func (c *cacheWriter) WriteSingleMetric(metrics *handlers.Metrics) error {
 	return c.encoder.Encode(&metrics)
 }
 
-func (c cacherWriter) WriteMultipleMetrics(metrics *[]handlers.Metrics) error {
+func (c cacheWriter) WriteMultipleMetrics(metrics *[]handlers.Metrics) error {
 	os.Truncate(c.file.Name(), 0)
 	c.file.Seek(0, 0)
 	return c.encoder.Encode(metrics)
 }
 
-func (c *cacherWriter) Close() error {
+func (c *cacheWriter) Close() error {
 	return c.file.Close()
 }
 
-type CacherReader struct {
+type CacheReader struct {
 	file    *os.File
 	decoder *json.Decoder
 }
 
-func NewCacherReader(fileName string) (*CacherReader, error) {
+func NewCacherReader(fileName string) (*CacheReader, error) {
 	file, err := os.OpenFile(fileName, os.O_RDONLY|os.O_CREATE, 0777)
 	if err != nil {
 		return nil, err
 	}
 
-	return &CacherReader{
+	return &CacheReader{
 		file:    file,
 		decoder: json.NewDecoder(file),
 	}, nil
 }
 
-func (c *CacherReader) Close() error {
+func (c *CacheReader) Close() error {
 	return c.file.Close()
 
 }
 
-func (c *CacherReader) ReadMetricsFromCache() ([]handlers.Metrics, error) {
+func (c *CacheReader) ReadMetricsFromCache() ([]handlers.Metrics, error) {
 	var m []handlers.Metrics
 	err := c.decoder.Decode(&m)
 	return m, err
 }
 
-func (c *CacherReader) TruncateFile() error {
+func (c *CacheReader) TruncateFile() error {
 	return os.Truncate(c.file.Name(), 0)
 }
 
-var _ Cacher = (*noopCacher)(nil)
+var _ CacheWriter = (*noopCacher)(nil)
 
 type noopCacher struct {
 }

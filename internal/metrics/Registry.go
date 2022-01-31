@@ -17,8 +17,13 @@ func NewRegistry() *Registry {
 	}}
 }
 
-func (r *Registry) Collect() {
-	r.Gauges = CollectRuntimeMetrics()
+func (r *Registry) Collect() error {
+	var err error
+	r.Gauges, err = CollectRuntimeMetrics()
+	if err != nil {
+		return err
+	}
+
 	r.Gauges = append(r.Gauges, func() Gauge {
 		return Gauge{
 			Name:  "RandomValue",
@@ -26,4 +31,6 @@ func (r *Registry) Collect() {
 		}
 	}())
 	r.PollCounter.Value += 1
+
+	return err
 }

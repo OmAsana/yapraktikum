@@ -7,29 +7,43 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-var Log *logger
-
-type logger struct {
+type Logger struct {
 	*zap.Logger
+	atomicLevel *zap.AtomicLevel
 }
 
-func (l *logger) Flush() {
+func (l *Logger) Flush() {
 	l.Logger.Sync()
 }
 
-func (l *logger) S() *zap.SugaredLogger {
+func (l *Logger) S() *zap.SugaredLogger {
 	return l.Logger.Sugar()
 
 }
 
-func init() {
+func (l *Logger) SetLogLevel(level zapcore.Level) {
+	l.atomicLevel.SetLevel(level)
+}
+
+func NewLogger() *Logger {
 	pe := zap.NewProductionEncoderConfig()
 	pe.EncodeTime = zapcore.ISO8601TimeEncoder
 	consoleEncoder := zapcore.NewConsoleEncoder(pe)
-	core := zapcore.NewCore(consoleEncoder, zapcore.AddSync(os.Stdout), zap.InfoLevel)
+
+	logLevel := zap.NewAtomicLevel()
+
+	core := zapcore.NewCore(consoleEncoder, zapcore.AddSync(os.Stdout), logLevel)
 
 	l := zap.New(core)
-	Log = &logger{
-		Logger: l,
+	return &Logger{
+		Logger:      l,
+		atomicLevel: &logLevel,
 	}
+}
+
+func NewNoop() *Logger {
+	return &Logger{
+		Logger: zap.NewNop(),
+	}
+
 }

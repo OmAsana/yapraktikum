@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"reflect"
 	"runtime"
-
-	"github.com/OmAsana/yapraktikum/internal/logging"
 )
 
 var memoryStats = []string{
@@ -40,12 +38,15 @@ var memoryStats = []string{
 	"Sys",
 }
 
-func CollectRuntimeMetrics() []Gauge {
-	memoryStats := memStats()
-	return memoryStats
+func CollectRuntimeMetrics() ([]Gauge, error) {
+	memoryStats, err := memStats()
+	if err != nil {
+		return nil, err
+	}
+	return memoryStats, nil
 }
 
-func memStats() []Gauge {
+func memStats() ([]Gauge, error) {
 	mStats := new(runtime.MemStats)
 	runtime.ReadMemStats(mStats)
 
@@ -53,14 +54,13 @@ func memStats() []Gauge {
 	for _, v := range memoryStats {
 		gauge, err := reflectMemoryStats(mStats, v)
 		if err != nil {
-			logging.Log.S().Error(err)
-			continue
+			return nil, err
 		}
 
 		metricsSlice = append(metricsSlice, gauge)
 	}
 
-	return metricsSlice
+	return metricsSlice, nil
 }
 
 func reflectMemoryStats(stats *runtime.MemStats, fieldName string) (Gauge, error) {

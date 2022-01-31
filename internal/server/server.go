@@ -17,7 +17,6 @@ import (
 	"github.com/OmAsana/yapraktikum/internal/metrics"
 	"github.com/OmAsana/yapraktikum/internal/pkg"
 	"github.com/OmAsana/yapraktikum/internal/repository"
-	"github.com/OmAsana/yapraktikum/internal/repository/inmemorystore"
 )
 
 type MetricsServer struct {
@@ -26,9 +25,8 @@ type MetricsServer struct {
 	storeInterval time.Duration
 	storeFile     string
 	restore       bool
-	cacherReader  *inmemorystore.CacherReader
-	cacherWriter  inmemorystore.Cacher
 	hashKey       string
+	log           *logging.Logger
 }
 
 func NewMetricsServer(db repository.MetricsRepository, opts ...Options) (*MetricsServer, error) {
@@ -38,6 +36,7 @@ func NewMetricsServer(db repository.MetricsRepository, opts ...Options) (*Metric
 		storeInterval: 0 * time.Second,
 		storeFile:     "",
 		restore:       false,
+		log:           logging.NewNoop(),
 	}
 
 	for _, opt := range opts {
@@ -96,7 +95,7 @@ func (ms MetricsServer) Value() http.HandlerFunc {
 		case "counter":
 			c, err := ms.db.RetrieveCounter(m.ID)
 			if err != nil {
-				logging.Log.S().Infof("Not found metric %+v", m)
+				ms.log.S().Infof("Not found metric %+v", m)
 				http.Error(writer, err.Error(), http.StatusNotFound)
 				return
 			}
@@ -106,7 +105,7 @@ func (ms MetricsServer) Value() http.HandlerFunc {
 		case "gauge":
 			g, err := ms.db.RetrieveGauge(m.ID)
 			if err != nil {
-				logging.Log.S().Infof("Not found metric %+v", m)
+				ms.log.S().Infof("Not found metric %+v", m)
 				http.Error(writer, err.Error(), http.StatusNotFound)
 				return
 			}
@@ -130,7 +129,10 @@ func (ms MetricsServer) Value() http.HandlerFunc {
 			return
 		}
 		writer.Header().Add("Content-Type", "application/json")
-		writer.Write(out)
+		_, err = writer.Write(out)
+		if err != nil {
+			ms.log.S().Error(err)
+		}
 	}
 }
 
@@ -383,14 +385,14 @@ func (ms MetricsServer) Updates() http.HandlerFunc {
 
 		err = ms.db.WriteBulkGauges(gauges)
 		if err != nil {
-			logging.Log.S().Error("Bulk write to db failed: ", err)
+			ms.log.S().Error("Bulk write to db failed: ", err)
 			http.Error(writer, "internal error", http.StatusInternalServerError)
 			return
 		}
 
 		err = ms.db.WriteBulkCounters(counters)
 		if err != nil {
-			logging.Log.S().Error("Bulk write to db failed: ", err)
+			ms.log.S().Error("Bulk write to db failed: ", err)
 			http.Error(writer, "internal error", http.StatusInternalServerError)
 			return
 		}

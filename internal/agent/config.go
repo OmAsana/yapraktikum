@@ -13,12 +13,14 @@ var (
 	DefaultReportInterval = 10 * time.Second
 	DefaultPollInterval   = 2 * time.Second
 	DefaultHashKey        = ""
+	DefaultDebug          = false
 
 	DefaultConfig = Config{
 		Address:        DefaultAddress,
 		ReportInterval: DefaultReportInterval,
 		PollInterval:   DefaultPollInterval,
 		HaskKey:        DefaultHashKey,
+		Debug:          DefaultDebug,
 	}
 )
 
@@ -27,6 +29,7 @@ type Config struct {
 	ReportInterval time.Duration `env:"REPORT_INTERVAL"`
 	PollInterval   time.Duration `env:"POLL_INTERVAL"`
 	HaskKey        string        `env:"KEY"`
+	Debug          bool          `env:"DEBUG"`
 	command        *flag.FlagSet
 }
 
@@ -58,6 +61,7 @@ func (c *Config) initCmdFlagsWithArgs(args []string) error {
 	pollInterval := command.Duration("p", DefaultPollInterval, "Poll interval")
 	address := command.String("a", DefaultAddress, "Endpoint address")
 	hashKey := command.String("k", DefaultHashKey, "Hash key")
+	debug := command.Bool("d", DefaultDebug, "Debug output")
 
 	if err := command.Parse(args); err != nil {
 		return err
@@ -67,6 +71,7 @@ func (c *Config) initCmdFlagsWithArgs(args []string) error {
 	c.PollInterval = *pollInterval
 	c.Address = *address
 	c.HaskKey = *hashKey
+	c.Debug = *debug
 
 	return nil
 }

@@ -16,7 +16,8 @@ import (
 var _ repository.MetricsRepository = (*Repository)(nil)
 
 type Repository struct {
-	db *sql.DB
+	db  *sql.DB
+	log *logging.Logger
 }
 
 func (r *Repository) WriteBulkCounters(counters []metrics.Counter) error {
@@ -72,17 +73,26 @@ func (r *Repository) WriteBulkGauges(gauges []metrics.Gauge) error {
 	return nil
 }
 
-func NewRepository(dbn string, restore bool) (*Repository, error) {
+func NewRepository(dbn string, restore bool, opts ...Option) (*Repository, error) {
 	db, err := sql.Open("pgx", dbn)
 	if err != nil {
 		return nil, err
 	}
 	r := &Repository{
-		db: db,
+		db:  db,
+		log: logging.NewNoop(),
+	}
+
+	for _, opt := range opts {
+		if err := opt(r); err != nil {
+			return nil, err
+		}
 	}
 
 	if !restore {
-		r.dropDatabase()
+		if err := r.dropDatabase(); err != nil {
+			return nil, err
+		}
 	}
 
 	if err := r.initTable(); err != nil {
@@ -95,17 +105,17 @@ func NewRepository(dbn string, restore bool) (*Repository, error) {
 func (r *Repository) initTable() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
-	_, err := r.db.ExecContext(ctx, "CREATE TABLE gauges ( name varchar(40) PRIMARY KEY, value double precision NOT NULL)")
+	_, err := r.db.ExecContext(ctx, "CREATE TABLE IF NOT EXISTS gauges ( name varchar(40) PRIMARY KEY, value double precision NOT NULL)")
 	if err != nil {
-		logging.Log.S().Errorf("Could not init table: %s", err)
+		r.log.S().Errorf("Could not init table: %s", err)
 		if !strings.Contains(err.Error(), `relation "gauges" already exists`) {
 			return err
 		}
 	}
 
-	_, err = r.db.ExecContext(ctx, "CREATE TABLE counters ( name varchar(40) PRIMARY KEY, value numeric NOT NULL)")
+	_, err = r.db.ExecContext(ctx, "CREATE TABLE IF NOT EXISTS counters ( name varchar(40) PRIMARY KEY, value numeric NOT NULL)")
 	if err != nil {
-		logging.Log.S().Errorf("Could not init table: %s", err)
+		r.log.S().Errorf("Could not init table: %s", err)
 		if !strings.Contains(err.Error(), `relation "counters" already exists`) {
 			return err
 		}
@@ -129,7 +139,7 @@ func (r *Repository) StoreCounter(counter metrics.Counter) repository.Repository
 	}
 	_, err := r.db.ExecContext(ctx, "INSERT INTO counters (name, value) VALUES ($1, $2) ON CONFLICT (name) DO UPDATE SET value = counters.value + EXCLUDED.value", c.Name, c.Value)
 	if err != nil {
-		logging.Log.S().Errorf("Could not insert counter: %s", err)
+		r.log.S().Errorf("Could not insert counter: %s", err)
 		return repository.ErrorInternalError
 	}
 	return nil
@@ -143,11 +153,11 @@ func (r *Repository) RetrieveCounter(name string) (metrics.Counter, repository.R
 	err := r.db.QueryRowContext(ctx, sqlStatement, name).Scan(&c.Name, &c.Value)
 	switch {
 	case err == sql.ErrNoRows:
-		logging.Log.S().Info("Counter does not exits: ", name)
+		r.log.S().Info("Counter does not exits: ", name)
 		return metrics.Counter{}, repository.ErrorCounterNotFound
 
 	case err != nil:
-		logging.Log.S().Errorf("could not retrieve counter: %s", err)
+		r.log.S().Errorf("could not retrieve counter: %s", err)
 		return c.ToMetric(), repository.ErrorCounterNotFound
 	default:
 		return c.ToMetric(), nil
@@ -165,7 +175,7 @@ func (r *Repository) StoreGauge(gauge metrics.Gauge) repository.RepositoryError 
 	}
 	_, err := r.db.ExecContext(ctx, "INSERT INTO gauges (name, value) VALUES ($1, $2) ON CONFLICT (name) DO UPDATE set VALUE = EXCLUDED.value", g.Name, g.Delta)
 	if err != nil {
-		logging.Log.S().Errorf("Could not insert gauge: %s", err)
+		r.log.S().Errorf("Could not insert gauge: %s", err)
 		return repository.ErrorInternalError
 	}
 	return nil
@@ -179,11 +189,11 @@ func (r *Repository) RetrieveGauge(name string) (metrics.Gauge, repository.Repos
 	err := r.db.QueryRowContext(ctx, sqlStatement, name).Scan(&g.Name, &g.Delta)
 	switch {
 	case err == sql.ErrNoRows:
-		logging.Log.S().Info("Counter does not exits: ", name)
+		r.log.S().Info("Counter does not exits: ", name)
 		return metrics.Gauge{}, repository.ErrorGaugeNotFound
 
 	case err != nil:
-		logging.Log.S().Errorf("could not retrieve counter: %s", err)
+		r.log.S().Errorf("could not retrieve counter: %s", err)
 		return g.ToMetric(), repository.ErrorGaugeNotFound
 	default:
 		return g.ToMetric(), nil
@@ -194,22 +204,22 @@ func (r *Repository) ListStoredMetrics() ([]metrics.Gauge, []metrics.Counter, re
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
 
-	gauges, err := r.retriveGauges(ctx)
+	gauges, err := r.retrieveGauges(ctx)
 	if err != nil {
-		logging.Log.S().Errorf("Error retriving gauges: %s", err)
+		r.log.S().Errorf("Error retriving gauges: %s", err)
 		return nil, nil, err
 	}
 
-	counters, err := r.retriveCounters(ctx)
+	counters, err := r.retrieveCounters(ctx)
 	if err != nil {
-		logging.Log.S().Errorf("Error retriving counters: %s", err)
+		r.log.S().Errorf("Error retriving counters: %s", err)
 		return nil, nil, err
 	}
 
 	return gauges, counters, nil
 }
 
-func (r Repository) retriveCounters(ctx context.Context) ([]metrics.Counter, error) {
+func (r Repository) retrieveCounters(ctx context.Context) ([]metrics.Counter, error) {
 	var counters []metrics.Counter
 	sqlStatement := `SELECT * FROM counters`
 
@@ -237,7 +247,7 @@ func (r Repository) retriveCounters(ctx context.Context) ([]metrics.Counter, err
 
 	return counters, nil
 }
-func (r Repository) retriveGauges(ctx context.Context) ([]metrics.Gauge, error) {
+func (r Repository) retrieveGauges(ctx context.Context) ([]metrics.Gauge, error) {
 	var gauges []metrics.Gauge
 	sqlStatement := `SELECT * FROM gauges`
 

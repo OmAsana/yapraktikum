@@ -6,8 +6,6 @@ import (
 	"time"
 
 	"github.com/caarlos0/env/v6"
-
-	"github.com/OmAsana/yapraktikum/internal/logging"
 )
 
 var (
@@ -17,6 +15,7 @@ var (
 	DefaultRestore       = true
 	DefaultHashKey       = ""
 	DefaultDatabaseDSN   = ""
+	DefaultDebug         = false
 
 	DefaultConfig = Config{
 		Address:       DefaultAddress,
@@ -24,6 +23,7 @@ var (
 		StoreFile:     DefaultStoreFile,
 		Restore:       DefaultRestore,
 		DatabaseDSN:   DefaultDatabaseDSN,
+		Debug:         DefaultDebug,
 	}
 )
 
@@ -34,6 +34,7 @@ type Config struct {
 	Restore       bool          `env:"RESTORE"`
 	HashKey       string        `env:"KEY"`
 	DatabaseDSN   string        `env:"DATABASE_DSN"`
+	Debug         bool          `env:"DEBUG"`
 }
 
 func InitConfig() (*Config, error) {
@@ -55,6 +56,7 @@ func (c *Config) initCmdFlagsWithArgs(args []string) error {
 
 	address := command.String("a", DefaultAddress, "Listen on address")
 	restore := command.Bool("r", DefaultRestore, "Restore metrics on startup")
+	debug := command.Bool("debug", DefaultDebug, "Debug output")
 	storeInterval := command.Duration("i", DefaultStoreInterval, "Store interval")
 	storeFile := command.String("f", DefaultStoreFile, "Store file")
 	hashKey := command.String("k", DefaultHashKey, "Hash key")
@@ -70,7 +72,7 @@ func (c *Config) initCmdFlagsWithArgs(args []string) error {
 	c.StoreInterval = *storeInterval
 	c.HashKey = *hashKey
 	c.DatabaseDSN = *databaseDSN
-	logging.Log.S().Infof("Config from flags: %+v", c)
+	c.Debug = *debug
 
 	return nil
 }
@@ -79,6 +81,5 @@ func (c *Config) initEnvArgs() error {
 	if err := env.Parse(c); err != nil {
 		return err
 	}
-	logging.Log.S().Infof("Config after envs vars: %+v", c)
 	return nil
 }

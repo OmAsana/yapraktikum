@@ -18,12 +18,14 @@ type InMemoryStore struct {
 	gauges   map[string]float64
 	counters map[string]int64
 
-	cacherWriter Cacher
-	cacherReader *CacherReader
+	cacheWriter CacheWriter
+	cacheReader *CacheReader
 
 	storeInterval time.Duration
 	storeFile     string
 	restore       bool
+
+	log *logging.Logger
 
 	storeSignal chan struct{}
 }
@@ -54,6 +56,7 @@ func NewDefaultInMemoryRepo() *InMemoryStore {
 	repo := &InMemoryStore{
 		gauges:   make(map[string]float64),
 		counters: make(map[string]int64),
+		log:      logging.NewNoop(),
 	}
 
 	return repo
@@ -68,6 +71,8 @@ func NewInMemoryRepo(opts ...Options) (*InMemoryStore, error) {
 		storeFile:     "",
 		restore:       false,
 		storeSignal:   make(chan struct{}),
+
+		log: logging.NewNoop(),
 	}
 	for _, opt := range opts {
 		opt(repo)
@@ -84,9 +89,9 @@ func NewInMemoryRepo(opts ...Options) (*InMemoryStore, error) {
 		if err != nil {
 			return nil, err
 		}
-		repo.cacherWriter = cacheWriter
+		repo.cacheWriter = cacheWriter
 	} else {
-		repo.cacherWriter = NewNoopCacher()
+		repo.cacheWriter = NewNoopCacher()
 	}
 
 	go repo.flushToDiskRoutine()
@@ -168,7 +173,7 @@ func (r *InMemoryStore) StoreGauge(gauge metrics.Gauge) repository.RepositoryErr
 
 func (r *InMemoryStore) ListStoredMetrics() ([]metrics.Gauge, []metrics.Counter, repository.RepositoryError) {
 	var gauges []metrics.Gauge
-	var couter []metrics.Counter
+	var counter []metrics.Counter
 
 	r.RLock()
 	defer r.RUnlock()
@@ -180,13 +185,13 @@ func (r *InMemoryStore) ListStoredMetrics() ([]metrics.Gauge, []metrics.Counter,
 	}
 
 	for k, v := range r.counters {
-		couter = append(couter, metrics.Counter{
+		counter = append(counter, metrics.Counter{
 			Name:  k,
 			Value: v,
 		})
 	}
 
-	return gauges, couter, nil
+	return gauges, counter, nil
 }
 
 func (r *InMemoryStore) restoreData() error {
@@ -229,25 +234,25 @@ func (r *InMemoryStore) restoreData() error {
 	return nil
 }
 func (r *InMemoryStore) flushToDisk() {
-	gauges, couters, err := r.ListStoredMetrics()
+	gauges, counters, err := r.ListStoredMetrics()
 	if err != nil {
-		logging.Log.S().Error("Failed to list metrics: %w", err)
+		r.log.S().Error("Failed to list metrics: %w", err)
 		return
 	}
-	flushMetrics := []handlers.Metrics{}
+	var flushMetrics []handlers.Metrics
 	for _, g := range gauges {
 		m := metrics.GaugeToHandlerScheme(g)
 		flushMetrics = append(flushMetrics, m)
 	}
 
-	for _, c := range couters {
+	for _, c := range counters {
 		m := metrics.CounterToHandlerScheme(c)
 		flushMetrics = append(flushMetrics, m)
 
 	}
 
-	err = r.cacherWriter.WriteMultipleMetrics(&flushMetrics)
+	err = r.cacheWriter.WriteMultipleMetrics(&flushMetrics)
 	if err != nil {
-		logging.Log.S().Error("Failed to write metrics: %w", err)
+		r.log.S().Error("Failed to write metrics: %w", err)
 	}
 }
