@@ -46,7 +46,7 @@ func (r *Repository) initTable() error {
 		}
 	}
 
-	_, err = r.db.ExecContext(ctx, "CREATE TABLE counters ( name varchar(40) PRIMARY KEY, value integer NOT NULL)")
+	_, err = r.db.ExecContext(ctx, "CREATE TABLE counters ( name varchar(40) PRIMARY KEY, value numeric NOT NULL)")
 	if err != nil {
 		logging.Log.S().Errorf("Could not init table: %s", err)
 		if !strings.Contains(err.Error(), `relation "counters" already exists`) {
