@@ -17,7 +17,7 @@ import (
 	"github.com/OmAsana/yapraktikum/internal/metrics"
 	"github.com/OmAsana/yapraktikum/internal/pkg"
 	"github.com/OmAsana/yapraktikum/internal/repository"
-	"github.com/OmAsana/yapraktikum/internal/repository/inmemoryStore"
+	"github.com/OmAsana/yapraktikum/internal/repository/inmemorystore"
 )
 
 type MetricsServer struct {
@@ -26,8 +26,8 @@ type MetricsServer struct {
 	storeInterval time.Duration
 	storeFile     string
 	restore       bool
-	cacherReader  *inmemoryStore.CacherReader
-	cacherWriter  inmemoryStore.Cacher
+	cacherReader  *inmemorystore.CacherReader
+	cacherWriter  inmemorystore.Cacher
 	hashKey       string
 }
 

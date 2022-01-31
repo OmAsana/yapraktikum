@@ -17,7 +17,7 @@ import (
 	"github.com/OmAsana/yapraktikum/internal/metrics"
 	"github.com/OmAsana/yapraktikum/internal/pkg"
 	"github.com/OmAsana/yapraktikum/internal/repository"
-	"github.com/OmAsana/yapraktikum/internal/repository/inmemoryStore"
+	"github.com/OmAsana/yapraktikum/internal/repository/inmemorystore"
 	"github.com/OmAsana/yapraktikum/internal/server"
 )
 
@@ -29,7 +29,7 @@ func ExampleAgent_Server() {
 
 func SetupRepo(t *testing.T) repository.MetricsRepository {
 	t.Helper()
-	repo := inmemoryStore.NewDefaultInMemoryRepo()
+	repo := inmemorystore.NewDefaultInMemoryRepo()
 	return repo
 }
 

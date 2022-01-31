@@ -8,7 +8,7 @@ import (
 
 	"github.com/OmAsana/yapraktikum/internal/logging"
 	"github.com/OmAsana/yapraktikum/internal/repository"
-	"github.com/OmAsana/yapraktikum/internal/repository/inmemoryStore"
+	"github.com/OmAsana/yapraktikum/internal/repository/inmemorystore"
 	"github.com/OmAsana/yapraktikum/internal/repository/sql"
 	"github.com/OmAsana/yapraktikum/internal/server"
 )
@@ -26,10 +26,10 @@ func startHTTPServer() (*http.Server, error) {
 		repo, err = sql.NewRepository(cfg.DatabaseDSN, cfg.Restore)
 
 	} else {
-		repo, err = inmemoryStore.NewInMemoryRepo(
-			inmemoryStore.WithRestore(cfg.Restore),
-			inmemoryStore.WithStoreFile(cfg.StoreFile),
-			inmemoryStore.WithStoreInterval(cfg.StoreInterval),
+		repo, err = inmemorystore.NewInMemoryRepo(
+			inmemorystore.WithRestore(cfg.Restore),
+			inmemorystore.WithStoreFile(cfg.StoreFile),
+			inmemorystore.WithStoreInterval(cfg.StoreInterval),
 		)
 	}
 	if err != nil {

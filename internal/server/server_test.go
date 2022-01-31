@@ -16,12 +16,12 @@ import (
 
 	"github.com/OmAsana/yapraktikum/internal/metrics"
 	"github.com/OmAsana/yapraktikum/internal/repository"
-	"github.com/OmAsana/yapraktikum/internal/repository/inmemoryStore"
+	"github.com/OmAsana/yapraktikum/internal/repository/inmemorystore"
 )
 
-func SetupRepo(t *testing.T, opts ...inmemoryStore.Options) repository.MetricsRepository {
+func SetupRepo(t *testing.T, opts ...inmemorystore.Options) repository.MetricsRepository {
 	t.Helper()
-	repo, err := inmemoryStore.NewInMemoryRepo(opts...)
+	repo, err := inmemorystore.NewInMemoryRepo(opts...)
 	assert.NoError(t, err)
 	return repo
 }

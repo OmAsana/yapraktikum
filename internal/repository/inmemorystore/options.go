@@ -1,4 +1,4 @@
-package inmemoryStore
+package inmemorystore
 
 import "time"
 
