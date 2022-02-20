@@ -12,7 +12,7 @@ func Test_CollectRuntimeMetrics(t *testing.T) {
 
 	wantStats := memoryStats
 	wantStats = append(wantStats, "FreeMemory", "TotalMemory")
-	for _, statName := range memoryStats {
+	for _, statName := range wantStats {
 		found := false
 		for _, gauge := range gauges {
 			if gauge.Name == statName {
