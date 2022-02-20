@@ -7,6 +7,7 @@ import (
 	"runtime"
 	"sync"
 
+	"github.com/shirou/gopsutil/v3/cpu"
 	"github.com/shirou/gopsutil/v3/mem"
 	"golang.org/x/sync/errgroup"
 )
@@ -48,7 +49,7 @@ type systemStatCollector func() ([]Gauge, error)
 func CollectRuntimeMetrics() ([]Gauge, error) {
 	g, _ := errgroup.WithContext(context.Background())
 
-	collectors := []systemStatCollector{runtimeMemStats, totalAndFreeMem}
+	collectors := []systemStatCollector{runtimeMemStats, totalAndFreeMem, cpuUtilization}
 	var result []Gauge
 	writeMu := sync.Mutex{}
 
@@ -83,6 +84,19 @@ func totalAndFreeMem() ([]Gauge, error) {
 				Name:  "TotalMemory",
 				Value: float64(memStats.Total)}},
 		nil
+}
+
+func cpuUtilization() ([]Gauge, error) {
+	util, err := cpu.Percent(0, true)
+	if err != nil {
+		return nil, err
+	}
+
+	var result []Gauge
+	for i, percent := range util {
+		result = append(result, Gauge{Name: fmt.Sprintf("CPUutilization%d", i+1), Value: percent})
+	}
+	return result, nil
 }
 
 func runtimeMemStats() ([]Gauge, error) {
