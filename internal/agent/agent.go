@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"sync"
 	"time"
 
 	"github.com/OmAsana/yapraktikum/internal/handlers"
@@ -76,18 +77,38 @@ func (a *Agent) Server(ctx context.Context) {
 
 	pollTicker := time.NewTicker(a.cfg.PollInterval)
 	reportTicker := time.NewTicker(a.cfg.ReportInterval)
-	for {
-		select {
-		case <-pollTicker.C:
-			a.registry.Collect()
-		case <-reportTicker.C:
-			//a.report()
-			//a.reportAPIv2()
-			a.reportAPIv3()
-		case <-ctx.Done():
-			return
+
+	wg := sync.WaitGroup{}
+
+	go func() {
+		wg.Add(1)
+		defer wg.Done()
+		for {
+			select {
+			case <-pollTicker.C:
+				err := a.registry.Collect()
+				if err != nil {
+					a.log.S().Error(err)
+				}
+			case <-ctx.Done():
+				return
+			}
 		}
-	}
+	}()
+
+	go func() {
+		wg.Add(1)
+		defer wg.Done()
+		for {
+			select {
+			case <-reportTicker.C:
+				a.reportAPIv3()
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+	wg.Wait()
 }
 
 func (a *Agent) sendRequest(req *http.Request) error {
@@ -170,7 +191,10 @@ func (a *Agent) report() {
 func (a Agent) reportAPIv3() {
 
 	var metrics []*handlers.Metrics
-	for _, gauge := range a.registry.Gauges {
+
+	gauges, counters := a.registry.Export()
+
+	for _, gauge := range gauges {
 		metric := &handlers.Metrics{
 			ID:    gauge.Name,
 			MType: "gauge",
@@ -178,7 +202,8 @@ func (a Agent) reportAPIv3() {
 		}
 		metrics = append(metrics, metric)
 	}
-	for _, counter := range a.registry.Counters {
+
+	for _, counter := range counters {
 		metric := &handlers.Metrics{
 			ID:    counter.Name,
 			MType: "counter",

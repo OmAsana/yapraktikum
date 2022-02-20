@@ -9,6 +9,9 @@ import (
 func Test_CollectRuntimeMetrics(t *testing.T) {
 	gauges, err := CollectRuntimeMetrics()
 	require.NoError(t, err)
+
+	wantStats := memoryStats
+	wantStats = append(wantStats, "FreeMemory", "TotalMemory")
 	for _, statName := range memoryStats {
 		found := false
 		for _, gauge := range gauges {

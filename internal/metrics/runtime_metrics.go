@@ -1,9 +1,14 @@
 package metrics
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"runtime"
+	"sync"
+
+	"github.com/shirou/gopsutil/v3/mem"
+	"golang.org/x/sync/errgroup"
 )
 
 var memoryStats = []string{
@@ -38,15 +43,49 @@ var memoryStats = []string{
 	"Sys",
 }
 
+type systemStatCollector func() ([]Gauge, error)
+
 func CollectRuntimeMetrics() ([]Gauge, error) {
-	memoryStats, err := memStats()
+	g, _ := errgroup.WithContext(context.Background())
+
+	collectors := []systemStatCollector{runtimeMemStats, totalAndFreeMem}
+	var result []Gauge
+	writeMu := sync.Mutex{}
+
+	for _, collector := range collectors {
+		collector := collector
+		g.Go(func() error {
+			stats, err := collector()
+			if err == nil {
+				writeMu.Lock()
+				result = append(result, stats...)
+				writeMu.Unlock()
+			}
+			return err
+		})
+	}
+	if err := g.Wait(); err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func totalAndFreeMem() ([]Gauge, error) {
+	memStats, err := mem.VirtualMemory()
 	if err != nil {
 		return nil, err
 	}
-	return memoryStats, nil
+	return []Gauge{
+			{
+				Name:  "FreeMemory",
+				Value: float64(memStats.Free)},
+			{
+				Name:  "TotalMemory",
+				Value: float64(memStats.Total)}},
+		nil
 }
 
-func memStats() ([]Gauge, error) {
+func runtimeMemStats() ([]Gauge, error) {
 	mStats := new(runtime.MemStats)
 	runtime.ReadMemStats(mStats)
 

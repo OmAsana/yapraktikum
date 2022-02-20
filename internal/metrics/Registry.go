@@ -2,9 +2,11 @@ package metrics
 
 import (
 	"math/rand"
+	"sync"
 )
 
 type Registry struct {
+	sync.RWMutex
 	Gauges      []Gauge
 	Counters    []Counter
 	PollCounter Counter
@@ -18,6 +20,9 @@ func NewRegistry() *Registry {
 }
 
 func (r *Registry) Collect() error {
+	r.Lock()
+	defer r.Unlock()
+
 	var err error
 	r.Gauges, err = CollectRuntimeMetrics()
 	if err != nil {
@@ -33,4 +38,13 @@ func (r *Registry) Collect() error {
 	r.PollCounter.Value += 1
 
 	return err
+}
+
+func (r *Registry) Export() ([]Gauge, []Counter) {
+	r.RLock()
+	defer r.RUnlock()
+
+	counter := r.Counters
+	counter = append(counter, r.PollCounter)
+	return r.Gauges, counter
 }
