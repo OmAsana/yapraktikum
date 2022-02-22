@@ -1,15 +1,19 @@
 package metrics
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 )
 
 func Test_CollectRuntimeMetrics(t *testing.T) {
-	gauges, err := CollectRuntimeMetrics()
+	gauges, err := CollectRuntimeMetrics(context.Background())
 	require.NoError(t, err)
-	for _, statName := range memoryStats {
+
+	wantStats := memoryStats
+	wantStats = append(wantStats, "FreeMemory", "TotalMemory")
+	for _, statName := range wantStats {
 		found := false
 		for _, gauge := range gauges {
 			if gauge.Name == statName {

@@ -1,9 +1,15 @@
 package metrics
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"runtime"
+	"sync"
+
+	"github.com/shirou/gopsutil/v3/cpu"
+	"github.com/shirou/gopsutil/v3/mem"
+	"golang.org/x/sync/errgroup"
 )
 
 var memoryStats = []string{
@@ -38,15 +44,66 @@ var memoryStats = []string{
 	"Sys",
 }
 
-func CollectRuntimeMetrics() ([]Gauge, error) {
-	memoryStats, err := memStats()
+type systemStatCollector func() ([]Gauge, error)
+
+func CollectRuntimeMetrics(ctx context.Context) ([]Gauge, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	g, _ := errgroup.WithContext(ctx)
+
+	collectors := []systemStatCollector{runtimeMemStats, totalAndFreeMem, cpuUtilization}
+	var result []Gauge
+	writeMu := sync.Mutex{}
+
+	for _, collector := range collectors {
+		collector := collector
+		g.Go(func() error {
+			stats, err := collector()
+			if err == nil {
+				writeMu.Lock()
+				result = append(result, stats...)
+				writeMu.Unlock()
+			}
+			return err
+		})
+	}
+	if err := g.Wait(); err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func totalAndFreeMem() ([]Gauge, error) {
+	memStats, err := mem.VirtualMemory()
 	if err != nil {
 		return nil, err
 	}
-	return memoryStats, nil
+	return []Gauge{
+			{
+				Name:  "FreeMemory",
+				Value: float64(memStats.Free)},
+			{
+				Name:  "TotalMemory",
+				Value: float64(memStats.Total)}},
+		nil
 }
 
-func memStats() ([]Gauge, error) {
+func cpuUtilization() ([]Gauge, error) {
+	util, err := cpu.Percent(0, true)
+	if err != nil {
+		return nil, err
+	}
+
+	var result []Gauge
+	for i, percent := range util {
+		result = append(result, Gauge{Name: fmt.Sprintf("CPUutilization%d", i+1), Value: percent})
+	}
+	return result, nil
+}
+
+func runtimeMemStats() ([]Gauge, error) {
 	mStats := new(runtime.MemStats)
 	runtime.ReadMemStats(mStats)
 
