@@ -86,7 +86,7 @@ func (a *Agent) Server(ctx context.Context) {
 		for {
 			select {
 			case <-pollTicker.C:
-				err := a.registry.Collect()
+				err := a.registry.Collect(ctx)
 				if err != nil {
 					a.log.S().Error(err)
 				}

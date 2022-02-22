@@ -1,6 +1,7 @@
 package metrics
 
 import (
+	"context"
 	"math/rand"
 	"sync"
 )
@@ -19,12 +20,12 @@ func NewRegistry() *Registry {
 	}}
 }
 
-func (r *Registry) Collect() error {
+func (r *Registry) Collect(ctx context.Context) error {
 	r.Lock()
 	defer r.Unlock()
 
 	var err error
-	r.Gauges, err = CollectRuntimeMetrics()
+	r.Gauges, err = CollectRuntimeMetrics(ctx)
 	if err != nil {
 		return err
 	}

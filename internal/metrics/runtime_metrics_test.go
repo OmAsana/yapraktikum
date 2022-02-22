@@ -1,13 +1,14 @@
 package metrics
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 )
 
 func Test_CollectRuntimeMetrics(t *testing.T) {
-	gauges, err := CollectRuntimeMetrics()
+	gauges, err := CollectRuntimeMetrics(context.Background())
 	require.NoError(t, err)
 
 	wantStats := memoryStats

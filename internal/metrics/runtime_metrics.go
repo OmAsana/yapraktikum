@@ -46,8 +46,12 @@ var memoryStats = []string{
 
 type systemStatCollector func() ([]Gauge, error)
 
-func CollectRuntimeMetrics() ([]Gauge, error) {
-	g, _ := errgroup.WithContext(context.Background())
+func CollectRuntimeMetrics(ctx context.Context) ([]Gauge, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	g, _ := errgroup.WithContext(ctx)
 
 	collectors := []systemStatCollector{runtimeMemStats, totalAndFreeMem, cpuUtilization}
 	var result []Gauge
